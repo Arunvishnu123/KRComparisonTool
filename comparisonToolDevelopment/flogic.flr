@@ -1,0 +1,4303 @@
+// classes and subclasses
+Aeroplane::Thing.
+FlighChecking::Thing.
+Airport::Thing.
+
+
+// pre-flight checking
+LoadChecking::FlighChecking.
+FuelChecking::FlighChecking.
+EngineChecking::FlighChecking.
+
+BatteryVoltageChecking::EngineChecking.
+EngineTemperatureChecking::EngineChecking.
+EngineOilPressureChecking::EngineChecking.
+EngineOilLevelChecking::EngineChecking.
+
+
+//check flight load is in limits
+LoadChecking[hasMaximumWeight -> 150000].
+LoadChecking[hasMinCGLimit -> 15, hasMaxCGLimit -> 50].
+LoadChecking[hasCurrentWeight -> 1666660000, hasCurrentCGPercentage -> 9].
+
+check_weight_balance :- LoadChecking[hasMaximumWeight -> ?FlightMaxWeight],
+                        LoadChecking[hasMinCGLimit -> ?FlightMinCGLimit, hasMaxCGLimit -> ?FlightMaxCGLimit],
+                        LoadChecking[hasCurrentWeight -> ?FlightCurrentWeight, hasCurrentCGPercentage -> ?CurrentCGPercentage],
+                        ?FlightMaxWeight > ?FlightCurrentWeight,?FlightMinCGLimit < ?CurrentCGPercentage,
+                        ?FlightMaxCGLimit > ?CurrentCGPercentage.
+
+//fuel checking
+FuelChecking[hasFlightFuelLevel -> 110].
+FuelChecking[hasRequiredFuelLevel -> 100].
+
+check_fuel_level :- FuelChecking[hasFlightFuelLevel -> ?FlightCurrentFuelLevel],
+                    FuelChecking[hasRequiredFuelLevel -> ?FlightRequiredFuelLevel],
+                    ?FlightCurrentFuelLevel >= ?FlightRequiredFuelLevel.
+
+
+
+//engine condition checking
+BatteryVoltageChecking[hasCurrrentValue -> 22].
+BatteryVoltageChecking[hasMinimumRequiredValue -> 20].
+
+check_battery_voltage :- BatteryVoltageChecking[hasCurrrentValue -> ?EngineCurrentBatteryVoltage],
+                         BatteryVoltageChecking[hasMinimumRequiredValue -> ?EngineRequiredBatteryVoltage],
+                         ?EngineCurrentBatteryVoltage > ?EngineRequiredBatteryVoltage.
+
+
+EngineTemperatureChecking[hasCurrrentValue -> 110].
+EngineTemperatureChecking[hasMinimumRequiredValue -> 100,hasMaximumRequiredValue -> 120].
+
+check_engine_temperature:- EngineTemperatureChecking[hasCurrrentValue -> ?EngineCurrentTemperature],
+                           EngineTemperatureChecking[hasMinimumRequiredValue -> ?EngineRequiredMinimumTemperature,hasMaximumRequiredValue -> ?EngineMaximumTemperature],
+                           ?EngineCurrentTemperature > ?EngineRequiredMinimumTemperature,
+                           ?EngineCurrentTemperature < ?EngineMaximumTemperature.
+
+EngineOilPressureChecking[hasCurrrentValue -> 60].
+EngineOilPressureChecking[hasMinimumRequiredValue -> 30,hasMaximumRequiredValue -> 100].
+
+check_engine_oil_pressure:- EngineOilPressureChecking[hasCurrrentValue -> ?EngineOilCurrentPressure],
+                            EngineOilPressureChecking[hasMinimumRequiredValue -> ?EngineOilRequiredMinimumPressure,hasMaximumRequiredValue -> ?EngineOilMaximumPressure],
+                            ?EngineOilCurrentPressure > ?EngineOilRequiredMinimumPressure,
+                            ?EngineOilCurrentPressure < ?EngineOilMaximumPressure.
+
+
+EngineOilLevelChecking[hasCurrrentValue -> 22].
+EngineOilLevelChecking[hasMinimumRequiredValue -> 15,hasMaximumRequiredValue -> 30].
+
+check_engine_oil_level :- EngineOilLevelChecking[hasCurrrentValue -> ?EngineCurrentOilLevel],
+                          EngineOilLevelChecking[hasMinimumRequiredValue -> ?EngineMinimumOilLevel,hasMaximumRequiredValue -> ?EngineMaximumOilLevel],
+                          ?EngineCurrentOilLevel > ?EngineMinimumOilLevel,
+                          ?EngineCurrentOilLevel < ?EngineMaximumOilLevel.
+
+check_engine_condition :- check_battery_voltage,check_engine_temperature,
+                          check_engine_oil_pressure,check_engine_oil_level.
+
+
+preflight_check :- check_engine_condition,
+                   check_fuel_level,
+                   check_engine_condition.
+
+
+
+//destination flight landing capability
+
+AirportVisibility::Airport.
+AirportVisibility[hasForcastedDecisionHeight -> 300,hasForcastedVisualRange -> 600].
+
+landing_protocol(?LandingProtocol):- AirportVisibility[hasForcastedDecisionHeight -> ?CurrentDecisionHeight,
+                                     hasForcastedVisualRange -> ?CurrentVisualRange],
+                                     ?CurrentDecisionHeight > 200,?CurrentVisualRange > 550 -->> ?LandingProtocol = 'CATI';
+                                     ?CurrentDecisionHeight > 100, ?CurrentDecisionHeight < 200,?CurrentVisualRange > 350,?CurrentVisualRange < 550 -->> ?LandingProtocol = 'CATII';
+                                     ?CurrentDecisionHeight > 50, ?CurrentDecisionHeight < 100,?CurrentVisualRange > 200,?CurrentVisualRange < 350 -->> ?LandingProtocol = 'CATIIIA';
+                                     ?CurrentDecisionHeight > 10, ?CurrentDecisionHeight < 50,?CurrentVisualRange > 50,?CurrentVisualRange < 200 -->> ?LandingProtocol = 'CATIIIB';
+                                     ?CurrentDecisionHeight > 0, ?CurrentDecisionHeight < 10,?CurrentVisualRange > 0,?CurrentVisualRange < 50 -->> ?LandingProtocol = 'CATIIIC'.
+
+
+//Performance improvement suggestion
+PerformanceMonitoring::Aeroplane.
+
+PerformanceMonitoring[hasFuelConsumption -> 15].
+PerformanceMonitoring[hasCrossWind -> 15].
+PerformanceMonitoring[hasTailWind -> 10].
+PerformanceMonitoring[hasAirSpeed -> 200].
+PerformanceMonitoring[hasAltitude -> 5000].
+
+
+// predicate to monitor the fuel consumption
+potential_issue(?Print):- PerformanceMonitoring[hasFuelConsumption -> ?CurrentFuelConsumption],
+                  ?CurrentFuelConsumption > 12 -->> ?Print = 'Increased fuel consumption rate';
+                  ?CurrentFuelConsumption < 12 -->> ?Print = 'Increased fuel consumption rate is optimum'.
+
+
+//predicate to monitor crosswind
+potential_issue(?Print):- PerformanceMonitoring[hasCrossWind -> ?CurrentCrossWind],
+                  ?CurrentCrossWind > 10 -->> ?Print = 'Heavy crosswinds'.
+
+//predicate to monitor tailwind
+potential_issue(?Print):- PerformanceMonitoring[hasTailWind -> ?CurrentTailWind],
+                  ?CurrentTailWind > 10 -->> ?Print = 'Heavy Tailwinds'.
+
+//predicate to monitor the current airspeed
+potential_issue(?Print):- PerformanceMonitoring[hasAirSpeed -> ?CurrentAirSpeed],
+                 ?CurrentAirSpeed > 300 -->> ?Print = 'High AirSpeed'.
+
+//predicate to monitor the aeroplane altitude
+potential_issue(?Print):- PerformanceMonitoring[hasAltitude -> ?CurrentAltitude],
+                  ?CurrentAltitude > 6000 -->> ?Print = 'Altitude limit is reached'.
+
+a01[hasLandingDistance -> 4000].
+// predicate to find the nearest airport
+findRunways(?AirportName, ?RunwayName, ?Distance ) :-
+                               ?AirportName[hasRunway(?RunwayName) ->?Distance],
+                                a01[hasLandingDistance -> ?RequiredLandingDistance],
+                                ?Distance > ?RequiredLandingDistance .
+
+
+//predicate to find the frequency
+
+final:- potential_issue(?Print),landing_protocol(?LandingProtocol),preflight_check.
+
+a01:aeroplane.
+paris:airport.
+//facts
+a01[hasLandingDistance -> 5000].
+a01[hasFuelLevel -> 20.0].
+paris[hasRunway(T1) -> 2000].
+paris[hasRunway(T2) -> 5400].
+toulouse[hasRunway(T1) -> 5200].
+
+//rules
+lowfuellevel(?FuelLevel) :-  a01[hasFuelLevel -> ?FuelLevel],
+                             ?FuelLevel > 30.0 .
+
+findRunways(?AirportName, ?RunwayName, ?Distance ) :-
+                               ?AirportName[hasRunway(?RunwayName) ->?Distance],
+                                a01[hasFuelLevel -> ?FuelLevel],
+                                ?FuelLevel < 30.0 ,
+                                a01[hasLandingDistance -> ?RequiredLandingDistance],
+                                ?Distance > ?RequiredLandingDistance .
+
+atl[hasFrequency  -> 122.9].
+anc[hasFrequency  -> 122.9].
+aus[hasFrequency  -> 122.8].
+bna[hasFrequency  -> 122.9].
+bos[hasFrequency  -> 122.8].
+bwi[hasFrequency  -> 123].
+dca[hasFrequency  -> 122.9].
+dfw[hasFrequency  -> 122.8].
+fll[hasFrequency  -> 124.6].
+iad[hasFrequency  -> 121.65].
+iah[hasFrequency  -> 120.4].
+jfk[hasFrequency  -> 122.9].
+lax[hasFrequency  -> 122.7].
+lga[hasFrequency  -> 126.85].
+mco[hasFrequency  -> 126.625].
+mia[hasFrequency  -> 122.8].
+msp[hasFrequency  -> 122.9].
+ord[hasFrequency  -> 122.8].
+pbi[hasFrequency  -> 132.65].
+phx[hasFrequency  -> 122.95].
+rdu[hasFrequency  -> 122.9].
+sea[hasFrequency  -> 122.9].
+sfo[hasFrequency  -> 128.35].
+sjc[hasFrequency  -> 122.8].
+tpa[hasFrequency  -> 126.625].
+san[hasFrequency  -> 122.8].
+lgb[hasFrequency  -> 123.05].
+sna[hasFrequency  -> 134.85].
+slc[hasFrequency  -> 126.2].
+las[hasFrequency  -> 38.9].
+den[hasFrequency  -> 138.25].
+hpn[hasFrequency  -> 119.75].
+sat[hasFrequency  -> 123].
+msy[hasFrequency  -> 119.35].
+ewr[hasFrequency  -> 322.1].
+cid[hasFrequency  -> 119.35].
+hnl[hasFrequency  -> 126.625].
+hou[hasFrequency  -> 122.725].
+elp[hasFrequency  -> 123].
+sju[hasFrequency  -> 127.45].
+cle[hasFrequency  -> 122.975].
+oak[hasFrequency  -> 126.625].
+tus[hasFrequency  -> 122.8].
+saf[hasFrequency  -> 122.725].
+phl[hasFrequency  -> 122.9].
+dtw[hasFrequency  -> 119.3].
+yyz[hasFrequency  -> 122.725].
+yvr[hasFrequency  -> 122.9].
+lhr[hasFrequency  -> 31.48].
+lgw[hasFrequency  -> 122.9].
+cdg[hasFrequency  -> 126.625].
+fra[hasFrequency  -> 122.9].
+hel[hasFrequency  -> 143.35].
+nrt[hasFrequency  -> 118.8].
+syd[hasFrequency  -> 30.45].
+sin[hasFrequency  -> 38.75].
+mel[hasFrequency  -> 38.7].
+dxb[hasFrequency  -> 41.2].
+del[hasFrequency  -> 120.75].
+dub[hasFrequency  -> 143.35].
+hkg[hasFrequency  -> 118.8].
+per[hasFrequency  -> 30.45].
+akl[hasFrequency  -> 38.75].
+pek[hasFrequency  -> 38.7].
+wlg[hasFrequency  -> 41.2].
+bne[hasFrequency  -> 120.75].
+pvg[hasFrequency  -> 122.9].
+fco[hasFrequency  -> 122.9].
+bom[hasFrequency  -> 126.625].
+ams[hasFrequency  -> 132.65].
+kul[hasFrequency  -> 122.9].
+prg[hasFrequency  -> 122.8].
+bcn[hasFrequency  -> 126.625].
+mad[hasFrequency  -> 122.8].
+vie[hasFrequency  -> 122.8].
+zrh[hasFrequency  -> 127.45].
+gva[hasFrequency  -> 122.9].
+yow[hasFrequency  -> 122.9].
+bru[hasFrequency  -> 125.5].
+muc[hasFrequency  -> 122.8].
+chc[hasFrequency  -> 122.8].
+cbr[hasFrequency  -> 122.8].
+rsw[hasFrequency  -> 127.45].
+man[hasFrequency  -> 126.625].
+yul[hasFrequency  -> 126.625].
+yeg[hasFrequency  -> 126.625].
+cgn[hasFrequency  -> 126.625].
+lcy[hasFrequency  -> 122.725].
+got[hasFrequency  -> 127.45].
+vce[hasFrequency  -> 122.9].
+snn[hasFrequency  -> 127.45].
+osl[hasFrequency  -> 126.625].
+arn[hasFrequency  -> 122.75].
+stn[hasFrequency  -> 122.8].
+ema[hasFrequency  -> 122.9].
+edi[hasFrequency  -> 122.9].
+gla[hasFrequency  -> 122.9].
+lpl[hasFrequency  -> 122.6].
+yyc[hasFrequency  -> 119.225].
+mnl[hasFrequency  -> 122.8].
+bkk[hasFrequency  -> 122.8].
+dme[hasFrequency  -> 122.8].
+svo[hasFrequency  -> 122.9].
+itm[hasFrequency  -> 122.9].
+hnd[hasFrequency  -> 122.9].
+doh[hasFrequency  -> 126.625].
+ory[hasFrequency  -> 126.625].
+nce[hasFrequency  -> 126.625].
+mxp[hasFrequency  -> 126.625].
+ath[hasFrequency  -> 126.625].
+zag[hasFrequency  -> 122.8].
+bud[hasFrequency  -> 123].
+alc[hasFrequency  -> 134.75].
+bio[hasFrequency  -> 122.8].
+ibz[hasFrequency  -> 122.9].
+mah[hasFrequency  -> 122.3].
+ccj[hasFrequency  -> 122.8].
+hyd[hasFrequency  -> 126.45].
+maa[hasFrequency  -> 114.6].
+ccu[hasFrequency  -> 123].
+blr[hasFrequency  -> 122.2].
+icn[hasFrequency  -> 126.625].
+yyt[hasFrequency  -> 127.45].
+tfn[hasFrequency  -> 122.75].
+cpt[hasFrequency  -> 126.625].
+jnb[hasFrequency  -> 126.625].
+dur[hasFrequency  -> 122.7].
+nbo[hasFrequency  -> 122.9].
+mba[hasFrequency  -> 122.8].
+mvd[hasFrequency  -> 122.9].
+gig[hasFrequency  -> 122.9].
+gru[hasFrequency  -> 122.8].
+eze[hasFrequency  -> 122.9].
+lim[hasFrequency  -> 122.8].
+scl[hasFrequency  -> 122.2].
+mex[hasFrequency  -> 123.3].
+kin[hasFrequency  -> 126.625].
+tlh[hasFrequency  -> 122.975].
+lca[hasFrequency  -> 126.625].
+waw[hasFrequency  -> 122.75].
+mla[hasFrequency  -> 126.625].
+sof[hasFrequency  -> 122.9].
+beg[hasFrequency  -> 122.9].
+cai[hasFrequency  -> 122.9].
+add[hasFrequency  -> 123.05].
+tlv[hasFrequency  -> 122.7].
+pit[hasFrequency  -> 126.625].
+pwm[hasFrequency  -> 122.9].
+pdx[hasFrequency  -> 122.7].
+okc[hasFrequency  -> 127.45].
+ont[hasFrequency  -> 122.9].
+roc[hasFrequency  -> 122.75].
+rst[hasFrequency  -> 126.625].
+kwi[hasFrequency  -> 126.625].
+pnh[hasFrequency  -> 127.45].
+ayq[hasFrequency  -> 122.725].
+asp[hasFrequency  -> 122.8].
+ool[hasFrequency  -> 127.45].
+fai[hasFrequency  -> 126.625].
+cns[hasFrequency  -> 132.65].
+ist[hasFrequency  -> 126.625].
+bah[hasFrequency  -> 122.8].
+yhz[hasFrequency  -> 122.95].
+auh[hasFrequency  -> 122.9].
+sgn[hasFrequency  -> 121.725].
+ywg[hasFrequency  -> 122.975].
+ham[hasFrequency  -> 122.9].
+str[hasFrequency  -> 122.9].
+goa[hasFrequency  -> 129.9].
+nap[hasFrequency  -> 123.05].
+psa[hasFrequency  -> 126.625].
+trn[hasFrequency  -> 126.625].
+blq[hasFrequency  -> 126.625].
+tsf[hasFrequency  -> 126.625].
+vrn[hasFrequency  -> 122.8].
+nte[hasFrequency  -> 127.45].
+cph[hasFrequency  -> 122.75].
+clt[hasFrequency  -> 127.45].
+lux[hasFrequency  -> 122.9].
+cun[hasFrequency  -> 126.625].
+psp[hasFrequency  -> 126.625].
+mem[hasFrequency  -> 122.9].
+cvg[hasFrequency  -> 122.8].
+ind[hasFrequency  -> 126.625].
+mci[hasFrequency  -> 122.9].
+dal[hasFrequency  -> 126.625].
+stl[hasFrequency  -> 132.65].
+abq[hasFrequency  -> 126.625].
+mke[hasFrequency  -> 127.45].
+mdw[hasFrequency  -> 126.625].
+hro[hasFrequency  -> 126.625].
+sln[hasFrequency  -> 122.9].
+oma[hasFrequency  -> 126.625].
+tul[hasFrequency  -> 127.45].
+pvr[hasFrequency  -> 126.625].
+ogg[hasFrequency  -> 122.9].
+mcy[hasFrequency  -> 122.9].
+dus[hasFrequency  -> 122.9].
+gum[hasFrequency  -> 122.9].
+txl[hasFrequency  -> 122.8].
+cmb[hasFrequency  -> 122.8].
+lis[hasFrequency  -> 122.8].
+gib[hasFrequency  -> 132.65].
+tun[hasFrequency  -> 123.07].
+tpe[hasFrequency  -> 126.625].
+ltn[hasFrequency  -> 122.7].
+ktm[hasFrequency  -> 34.2].
+nas[hasFrequency  -> 118.1].
+fpo[hasFrequency  -> 342.5].
+ggt[hasFrequency  -> 118.1].
+eyw[hasFrequency  -> 118.1].
+fuk[hasFrequency  -> 122.85].
+kix[hasFrequency  -> 122.8].
+cts[hasFrequency  -> 118.1].
+jed[hasFrequency  -> 126.5].
+mct[hasFrequency  -> 123.5].
+kef[hasFrequency  -> 123.5].
+bgi[hasFrequency  -> 123].
+anu[hasFrequency  -> 123.2].
+stt[hasFrequency  -> 123.5].
+bda[hasFrequency  -> 123.5].
+tab[hasFrequency  -> 123.2].
+pos[hasFrequency  -> 118.9].
+los[hasFrequency  -> 122.1].
+mbj[hasFrequency  -> 126.7].
+hre[hasFrequency  -> 127.1].
+lit[hasFrequency  -> 126.7].
+lpa[hasFrequency  -> 127.1].
+sou[hasFrequency  -> 126.7].
+pmi[hasFrequency  -> 119.1].
+adl[hasFrequency  -> 126.7].
+drw[hasFrequency  -> 126.7].
+cur[hasFrequency  -> 122.4].
+dps[hasFrequency  -> 118.6].
+cgk[hasFrequency  -> 113.7].
+bon[hasFrequency  -> 119.6].
+aua[hasFrequency  -> 122.1].
+orf[hasFrequency  -> 119].
+jax[hasFrequency  -> 126.8].
+pvd[hasFrequency  -> 119].
+puj[hasFrequency  -> 126.8].
+mdt[hasFrequency  -> 126.7].
+sjo[hasFrequency  -> 121].
+smf[hasFrequency  -> 126.7].
+rtb[hasFrequency  -> 119.5].
+tgu[hasFrequency  -> 127.1].
+lxr[hasFrequency  -> 120.2].
+rix[hasFrequency  -> 135.5].
+ruh[hasFrequency  -> 120.7].
+can[hasFrequency  -> 122.4].
+agp[hasFrequency  -> 122.6].
+fnc[hasFrequency  -> 127.1].
+lba[hasFrequency  -> 124.9].
+abz[hasFrequency  -> 118.7].
+ayt[hasFrequency  -> 124.1].
+isb[hasFrequency  -> 127.1].
+jer[hasFrequency  -> 120.9].
+zth[hasFrequency  -> 127.1].
+rho[hasFrequency  -> 127.8].
+brs[hasFrequency  -> 120.1].
+ncl[hasFrequency  -> 118.1].
+gci[hasFrequency  -> 128.4].
+cos[hasFrequency  -> 120.5].
+hsv[hasFrequency  -> 129.35].
+bhm[hasFrequency  -> 120.1].
+yqb[hasFrequency  -> 118.6].
+rap[hasFrequency  -> 128.6].
+sdf[hasFrequency  -> 120.7].
+buf[hasFrequency  -> 121.7].
+shv[hasFrequency  -> 125.8].
+boi[hasFrequency  -> 117].
+lih[hasFrequency  -> 121.7].
+lbb[hasFrequency  -> 118.1].
+ein[hasFrequency  -> 127.1].
+svq[hasFrequency  -> 120.9].
+bsl[hasFrequency  -> 118.2].
+ecp[hasFrequency  -> 126.7].
+hrl[hasFrequency  -> 128.2].
+dbv[hasFrequency  -> 121.7].
+rno[hasFrequency  -> 126.7].
+cmh[hasFrequency  -> 122.9].
+ida[hasFrequency  -> 122.9].
+alb[hasFrequency  -> 123.6].
+svg[hasFrequency  -> 119.1].
+hkt[hasFrequency  -> 118.1].
+amm[hasFrequency  -> 119.1].
+bgo[hasFrequency  -> 118.1].
+ict[hasFrequency  -> 118.1].
+maf[hasFrequency  -> 267.3].
+yxe[hasFrequency  -> 118.1].
+bdl[hasFrequency  -> 118.1].
+bil[hasFrequency  -> 126.2].
+sxm[hasFrequency  -> 121.3].
+nan[hasFrequency  -> 118.3].
+sgf[hasFrequency  -> 118.1].
+ric[hasFrequency  -> 836.4].
+ccs[hasFrequency  -> 134.1].
+gye[hasFrequency  -> 119.9].
+nkg[hasFrequency  -> 119.9].
+txk[hasFrequency  -> 131.1].
+pia[hasFrequency  -> 126.2].
+tll[hasFrequency  -> 118.1].
+alg[hasFrequency  -> 119.7].
+ito[hasFrequency  -> 118.7].
+lex[hasFrequency  -> 118.2].
+gua[hasFrequency  -> 119.7].
+isp[hasFrequency  -> 119.1].
+iag[hasFrequency  -> 119.7].
+swf[hasFrequency  -> 119.4].
+bim[hasFrequency  -> 119.7].
+ork[hasFrequency  -> 118.1].
+hav[hasFrequency  -> 119.7].
+wro[hasFrequency  -> 118.1].
+crp[hasFrequency  -> 119.7].
+khi[hasFrequency  -> 118.8].
+lhe[hasFrequency  -> 131.9].
+asb[hasFrequency  -> 119.3].
+vko[hasFrequency  -> 128.3].
+spu[hasFrequency  -> 119.3].
+tse[hasFrequency  -> 121.9].
+gyd[hasFrequency  -> 129].
+jai[hasFrequency  -> 125].
+acc[hasFrequency  -> 118.3].
+bhd[hasFrequency  -> 118.2].
+ebb[hasFrequency  -> 118].
+haj[hasFrequency  -> 119.7].
+lin[hasFrequency  -> 119.1].
+lys[hasFrequency  -> 119].
+mrs[hasFrequency  -> 128.1].
+otp[hasFrequency  -> 121.7].
+rtm[hasFrequency  -> 126.55].
+cmn[hasFrequency  -> 118].
+tng[hasFrequency  -> 118.1].
+abv[hasFrequency  -> 119.7].
+ala[hasFrequency  -> 118.1].
+bey[hasFrequency  -> 119.9].
+ctu[hasFrequency  -> 119.7].
+fao[hasFrequency  -> 118.1].
+fna[hasFrequency  -> 119.7].
+jmk[hasFrequency  -> 119].
+jtr[hasFrequency  -> 118.5].
+kbp[hasFrequency  -> 118.775].
+rjk[hasFrequency  -> 118].
+tls[hasFrequency  -> 136.8].
+lad[hasFrequency  -> 120.125].
+led[hasFrequency  -> 123.2].
+opo[hasFrequency  -> 123.2].
+tip[hasFrequency  -> 127.7].
+dac[hasFrequency  -> 123.2].
+zyl[hasFrequency  -> 123.2].
+lcg[hasFrequency  -> 123.2].
+tas[hasFrequency  -> 122.8].
+ika[hasFrequency  -> 123.2].
+mru[hasFrequency  -> 122.8].
+sez[hasFrequency  -> 122.8].
+abi[hasFrequency  -> 123.4].
+act[hasFrequency  -> 123.15].
+cll[hasFrequency  -> 123.2].
+bmi[hasFrequency  -> 123.2].
+bog[hasFrequency  -> 122.8].
+bpt[hasFrequency  -> 123].
+dsm[hasFrequency  -> 123.2].
+myr[hasFrequency  -> 123.2].
+aex[hasFrequency  -> 123.4].
+czm[hasFrequency  -> 123].
+agu[hasFrequency  -> 122.9].
+mty[hasFrequency  -> 123.2].
+ama[hasFrequency  -> 122.9].
+bjx[hasFrequency  -> 123.2].
+bro[hasFrequency  -> 123.2].
+btr[hasFrequency  -> 122.9].
+bze[hasFrequency  -> 122.9].
+cae[hasFrequency  -> 122.9].
+cha[hasFrequency  -> 41.5].
+chs[hasFrequency  -> 38.9].
+cmi[hasFrequency  -> 122.9].
+cou[hasFrequency  -> 122.8].
+crw[hasFrequency  -> 122.75].
+day[hasFrequency  -> 123.2].
+cuu[hasFrequency  -> 126.7].
+dro[hasFrequency  -> 123.2].
+evv[hasFrequency  -> 123.2].
+far[hasFrequency  -> 123.35].
+fat[hasFrequency  -> 123.2].
+fsd[hasFrequency  -> 123.2].
+fsm[hasFrequency  -> 122.8].
+fwa[hasFrequency  -> 122.8].
+gck[hasFrequency  -> 123].
+gdl[hasFrequency  -> 123.3].
+ggg[hasFrequency  -> 125.5].
+gjt[hasFrequency  -> 118.1].
+gpt[hasFrequency  -> 123.2].
+gri[hasFrequency  -> 122.8].
+grk[hasFrequency  -> 122.8].
+grr[hasFrequency  -> 122.8].
+gso[hasFrequency  -> 123.2].
+gsp[hasFrequency  -> 123.2].
+jan[hasFrequency  -> 123.4].
+jln[hasFrequency  -> 129.9].
+law[hasFrequency  -> 122.8].
+lch[hasFrequency  -> 123.7].
+lft[hasFrequency  -> 126.7].
+lir[hasFrequency  -> 122.8].
+lrd[hasFrequency  -> 122.8].
+mfe[hasFrequency  -> 123.2].
+mgm[hasFrequency  -> 123.2].
+mhk[hasFrequency  -> 123.2].
+mli[hasFrequency  -> 123.2].
+mlm[hasFrequency  -> 122.8].
+mlu[hasFrequency  -> 131.05].
+mob[hasFrequency  -> 123.475].
+msn[hasFrequency  -> 126.7].
+mzt[hasFrequency  -> 123.4].
+pbc[hasFrequency  -> 118.3].
+pls[hasFrequency  -> 123.2].
+pns[hasFrequency  -> 122.8].
+pty[hasFrequency  -> 123.2].
+qro[hasFrequency  -> 123.2].
+row[hasFrequency  -> 123].
+sal[hasFrequency  -> 123.2].
+sav[hasFrequency  -> 123.2].
+sjd[hasFrequency  -> 122.8].
+sjt[hasFrequency  -> 123.2].
+slp[hasFrequency  -> 135.65].
+spi[hasFrequency  -> 123.2].
+sps[hasFrequency  -> 123.2].
+trc[hasFrequency  -> 123.2].
+tyr[hasFrequency  -> 123.2].
+tys[hasFrequency  -> 123.2].
+vps[hasFrequency  -> 121.8].
+xna[hasFrequency  -> 122.8].
+zcl[hasFrequency  -> 123].
+inn[hasFrequency  -> 123.2].
+uvf[hasFrequency  -> 123.2].
+cak[hasFrequency  -> 123.4].
+brl[hasFrequency  -> 132.1].
+mht[hasFrequency  -> 123.2].
+syr[hasFrequency  -> 119.2].
+yqr[hasFrequency  -> 123].
+flo[hasFrequency  -> 122.8].
+avl[hasFrequency  -> 122.8].
+pom[hasFrequency  -> 123.2].
+ege[hasFrequency  -> 123.5].
+hdn[hasFrequency  -> 120.6].
+srq[hasFrequency  -> 119.5].
+foe[hasFrequency  -> 122.8].
+lan[hasFrequency  -> 122.8].
+roa[hasFrequency  -> 132.1].
+mqt[hasFrequency  -> 123.2].
+grb[hasFrequency  -> 123.45].
+bhx[hasFrequency  -> 123].
+inv[hasFrequency  -> 123.2].
+szg[hasFrequency  -> 123.35].
+kgs[hasFrequency  -> 123.2].
+trd[hasFrequency  -> 122.8].
+han[hasFrequency  -> 123.2].
+khh[hasFrequency  -> 123.2].
+ngo[hasFrequency  -> 123.2].
+bll[hasFrequency  -> 123.5].
+brn[hasFrequency  -> 123.2].
+iom[hasFrequency  -> 132.1].
+grx[hasFrequency  -> 123.2].
+flr[hasFrequency  -> 123.2].
+drs[hasFrequency  -> 122.7].
+dol[hasFrequency  -> 123.2].
+bve[hasFrequency  -> 123.2].
+bes[hasFrequency  -> 122.8].
+anr[hasFrequency  -> 123.2].
+bre[hasFrequency  -> 123.55].
+cfe[hasFrequency  -> 122.8].
+prn[hasFrequency  -> 122.8].
+hme[hasFrequency  -> 123].
+sxf[hasFrequency  -> 123.2].
+erf[hasFrequency  -> 123.4].
+bfs[hasFrequency  -> 123.2].
+nqy[hasFrequency  -> 122.9].
+noc[hasFrequency  -> 122.8].
+aal[hasFrequency  -> 122.8].
+aes[hasFrequency  -> 123.4].
+tos[hasFrequency  -> 123.3].
+trf[hasFrequency  -> 122.8].
+krk[hasFrequency  -> 123.2].
+kun[hasFrequency  -> 133.45].
+fue[hasFrequency  -> 126.7].
+ace[hasFrequency  -> 122.8].
+tfs[hasFrequency  -> 123].
+aga[hasFrequency  -> 123].
+rak[hasFrequency  -> 123.2].
+sid[hasFrequency  -> 123.2].
+bvc[hasFrequency  -> 123].
+hrg[hasFrequency  -> 123.2].
+ssh[hasFrequency  -> 123.2].
+tia[hasFrequency  -> 123].
+pfo[hasFrequency  -> 123.2].
+lei[hasFrequency  -> 123.2].
+mjv[hasFrequency  -> 123].
+scq[hasFrequency  -> 122.8].
+vlc[hasFrequency  -> 126.2].
+bod[hasFrequency  -> 123.2].
+bia[hasFrequency  -> 122.8].
+aja[hasFrequency  -> 122.8].
+mpl[hasFrequency  -> 123.2].
+sxb[hasFrequency  -> 123.2].
+her[hasFrequency  -> 122.8].
+efl[hasFrequency  -> 123.2].
+klx[hasFrequency  -> 123.2].
+cfu[hasFrequency  -> 123.2].
+pvk[hasFrequency  -> 122.8].
+chq[hasFrequency  -> 122.2].
+skg[hasFrequency  -> 126.7].
+bri[hasFrequency  -> 123.2].
+cta[hasFrequency  -> 123.2].
+pmo[hasFrequency  -> 122.8].
+olb[hasFrequency  -> 123.2].
+pdl[hasFrequency  -> 122.8].
+adb[hasFrequency  -> 123.3].
+dlm[hasFrequency  -> 123.5].
+bjv[hasFrequency  -> 123.2].
+saw[hasFrequency  -> 123.2].
+tiv[hasFrequency  -> 123.2].
+nbe[hasFrequency  -> 123.5].
+msq[hasFrequency  -> 122.35].
+mle[hasFrequency  -> 123.2].
+dtm[hasFrequency  -> 123.2].
+ags[hasFrequency  -> 122].
+bgr[hasFrequency  -> 49.9].
+btv[hasFrequency  -> 123.2].
+fay[hasFrequency  -> 135.5].
+hhh[hasFrequency  -> 123.5].
+ilm[hasFrequency  -> 134.025].
+oaj[hasFrequency  -> 123.55].
+nue[hasFrequency  -> 122.2].
+lej[hasFrequency  -> 122.9].
+cwl[hasFrequency  -> 130.275].
+sen[hasFrequency  -> 123.2].
+huy[hasFrequency  -> 123.2].
+mme[hasFrequency  -> 49.9].
+nwi[hasFrequency  -> 123.2].
+ext[hasFrequency  -> 123.2].
+krs[hasFrequency  -> 123.2].
+gdn[hasFrequency  -> 122.8].
+vxo[hasFrequency  -> 122.8].
+lpi[hasFrequency  -> 123.2].
+spc[hasFrequency  -> 122.8].
+ndr[hasFrequency  -> 123.2].
+vxe[hasFrequency  -> 123.4].
+kgl[hasFrequency  -> 123.2].
+jro[hasFrequency  -> 123.2].
+sfb[hasFrequency  -> 122.9].
+gro[hasFrequency  -> 123.2].
+jkh[hasFrequency  -> 123.2].
+kit[hasFrequency  -> 123.2].
+smi[hasFrequency  -> 123.2].
+suf[hasFrequency  -> 123.2].
+lju[hasFrequency  -> 123].
+kya[hasFrequency  -> 122.7].
+asr[hasFrequency  -> 123.2].
+pop[hasFrequency  -> 122.8].
+hog[hasFrequency  -> 123.2].
+vra[hasFrequency  -> 122.8].
+dmm[hasFrequency  -> 123.2].
+ebl[hasFrequency  -> 122.8].
+uio[hasFrequency  -> 123.2].
+pbm[hasFrequency  -> 122.8].
+guw[hasFrequency  -> 123.2].
+tbs[hasFrequency  -> 123.2].
+xmn[hasFrequency  -> 122.8].
+hgh[hasFrequency  -> 123.55].
+bqn[hasFrequency  -> 122.8].
+apf[hasFrequency  -> 444.1].
+gnv[hasFrequency  -> 123.2].
+lrm[hasFrequency  -> 123.2].
+sdq[hasFrequency  -> 123.2].
+sti[hasFrequency  -> 122.8].
+sap[hasFrequency  -> 122.8].
+mid[hasFrequency  -> 122.8].
+mga[hasFrequency  -> 122.2].
+pap[hasFrequency  -> 123.2].
+cyb[hasFrequency  -> 122.8].
+gcm[hasFrequency  -> 122.8].
+mhh[hasFrequency  -> 122.8].
+elh[hasFrequency  -> 123.2].
+bel[hasFrequency  -> 123.2].
+bsb[hasFrequency  -> 122.8].
+cnf[hasFrequency  -> 123].
+cwb[hasFrequency  -> 122.8].
+mao[hasFrequency  -> 122.8].
+rec[hasFrequency  -> 123.2].
+ssa[hasFrequency  -> 123.2].
+asu[hasFrequency  -> 122.8].
+baq[hasFrequency  -> 122.9].
+ctg[hasFrequency  -> 121].
+clo[hasFrequency  -> 123.2].
+mde[hasFrequency  -> 123.2].
+lpb[hasFrequency  -> 119.4].
+bla[hasFrequency  -> 119.4].
+mar[hasFrequency  -> 123.2].
+geo[hasFrequency  -> 123.2].
+fdf[hasFrequency  -> 122.85].
+ptp[hasFrequency  -> 123.2].
+gnd[hasFrequency  -> 123.2].
+stx[hasFrequency  -> 123.35].
+skb[hasFrequency  -> 123.2].
+dkr[hasFrequency  -> 118.3].
+bur[hasFrequency  -> 123.2].
+azs[hasFrequency  -> 123.2].
+pse[hasFrequency  -> 123.2].
+acy[hasFrequency  -> 123.4].
+abe[hasFrequency  -> 130].
+aby[hasFrequency  -> 119.4].
+atw[hasFrequency  -> 127.2].
+avp[hasFrequency  -> 121.65].
+azo[hasFrequency  -> 118.7].
+bqk[hasFrequency  -> 124.025].
+cho[hasFrequency  -> 123].
+csg[hasFrequency  -> 122.8].
+dab[hasFrequency  -> 122.8].
+dhn[hasFrequency  -> 122.8].
+ewn[hasFrequency  -> 119.3].
+fnt[hasFrequency  -> 123.3].
+gtr[hasFrequency  -> 123].
+lwb[hasFrequency  -> 129.275].
+mbs[hasFrequency  -> 123].
+mcn[hasFrequency  -> 123.2].
+mei[hasFrequency  -> 122.8].
+mlb[hasFrequency  -> 122.8].
+msl[hasFrequency  -> 123.3].
+phf[hasFrequency  -> 123.3].
+pib[hasFrequency  -> 134.25].
+sbn[hasFrequency  -> 122.725].
+tri[hasFrequency  -> 123.2].
+ttn[hasFrequency  -> 122.8].
+tup[hasFrequency  -> 122.8].
+vld[hasFrequency  -> 126.7].
+kir[hasFrequency  -> 122.8].
+ktw[hasFrequency  -> 126].
+luz[hasFrequency  -> 126].
+ppt[hasFrequency  -> 134.675].
+lny[hasFrequency  -> 118.525].
+koa[hasFrequency  -> 123].
+apw[hasFrequency  -> 129.275].
+ppg[hasFrequency  -> 122.9].
+maj[hasFrequency  -> 122.725].
+cxi[hasFrequency  -> 124.275].
+trw[hasFrequency  -> 122.7].
+inu[hasFrequency  -> 123.2].
+jhm[hasFrequency  -> 122.8].
+mkk[hasFrequency  -> 122.725].
+yxu[hasFrequency  -> 126.5].
+alo[hasFrequency  -> 133.4].
+sux[hasFrequency  -> 123.5].
+ykf[hasFrequency  -> 135.3].
+vno[hasFrequency  -> 123].
+agr[hasFrequency  -> 122.8].
+hjr[hasFrequency  -> 123.2].
+vns[hasFrequency  -> 129.275].
+vvo[hasFrequency  -> 123.2].
+boj[hasFrequency  -> 123.2].
+ixe[hasFrequency  -> 123.2].
+reu[hasFrequency  -> 123.2].
+bzr[hasFrequency  -> 122.8].
+amd[hasFrequency  -> 129.275].
+jdh[hasFrequency  -> 123.3].
+pnq[hasFrequency  -> 123.17].
+szx[hasFrequency  -> 122.775].
+hij[hasFrequency  -> 123.35].
+dil[hasFrequency  -> 122.8].
+tsn[hasFrequency  -> 122.8].
+csx[hasFrequency  -> 132.575].
+pen[hasFrequency  -> 122.85].
+wuh[hasFrequency  -> 123.2].
+hak[hasFrequency  -> 123.2].
+kmg[hasFrequency  -> 128.27].
+foc[hasFrequency  -> 125].
+ngb[hasFrequency  -> 123.35].
+tao[hasFrequency  -> 122.8].
+ckg[hasFrequency  -> 123.05].
+kwe[hasFrequency  -> 123.3].
+nng[hasFrequency  -> 118.325].
+koj[hasFrequency  -> 122.725].
+oit[hasFrequency  -> 123.2].
+kmq[hasFrequency  -> 123.2].
+ygj[hasFrequency  -> 122.8].
+myj[hasFrequency  -> 122.9].
+tak[hasFrequency  -> 123.2].
+kij[hasFrequency  -> 122.8].
+sdj[hasFrequency  -> 123.4].
+cju[hasFrequency  -> 123.2].
+pus[hasFrequency  -> 123.3].
+oka[hasFrequency  -> 129.275].
+spn[hasFrequency  -> 123.2].
+ror[hasFrequency  -> 132.65].
+rgn[hasFrequency  -> 122.5].
+dmk[hasFrequency  -> 122.8].
+cnx[hasFrequency  -> 123.2].
+kbv[hasFrequency  -> 122.8].
+usm[hasFrequency  -> 123.2].
+hdy[hasFrequency  -> 123.4].
+dad[hasFrequency  -> 122.8].
+bwn[hasFrequency  -> 123.15].
+ceb[hasFrequency  -> 118.8].
+uln[hasFrequency  -> 123.4].
+mfm[hasFrequency  -> 123.4].
+bpn[hasFrequency  -> 123.2].
+bki[hasFrequency  -> 123.2].
+crk[hasFrequency  -> 123.2].
+kbr[hasFrequency  -> 123.2].
+ilo[hasFrequency  -> 123.2].
+rep[hasFrequency  -> 123.2].
+khv[hasFrequency  -> 123.4].
+uus[hasFrequency  -> 122.8].
+cgq[hasFrequency  -> 123].
+dlc[hasFrequency  -> 123.4].
+she[hasFrequency  -> 122.8].
+kch[hasFrequency  -> 122.8].
+myy[hasFrequency  -> 123.2].
+kua[hasFrequency  -> 123.2].
+iph[hasFrequency  -> 122.8].
+lgk[hasFrequency  -> 122.725].
+tgg[hasFrequency  -> 123.2].
+szb[hasFrequency  -> 123.5].
+shj[hasFrequency  -> 123.2].
+ade[hasFrequency  -> 123.2].
+cjb[hasFrequency  -> 123.3].
+cok[hasFrequency  -> 122.35].
+var[hasFrequency  -> 128.7].
+trv[hasFrequency  -> 122.9].
+dvo[hasFrequency  -> 122.9].
+vte[hasFrequency  -> 122.9].
+sub[hasFrequency  -> 122.9].
+bdo[hasFrequency  -> 122.8].
+lop[hasFrequency  -> 123.45].
+klo[hasFrequency  -> 139.33].
+pku[hasFrequency  -> 123.2].
+plm[hasFrequency  -> 122.9].
+soc[hasFrequency  -> 122.75].
+srg[hasFrequency  -> 122.7].
+upg[hasFrequency  -> 128.225].
+trz[hasFrequency  -> 122.8].
+sah[hasFrequency  -> 123].
+jog[hasFrequency  -> 126.575].
+diu[hasFrequency  -> 122.1].
+pbd[hasFrequency  -> 122.8].
+nou[hasFrequency  -> 122.9].
+tsa[hasFrequency  -> 124.65].
+shm[hasFrequency  -> 132.85].
+ukb[hasFrequency  -> 123].
+obo[hasFrequency  -> 122.8].
+hkd[hasFrequency  -> 123.5].
+kuh[hasFrequency  -> 123.2].
+mmb[hasFrequency  -> 123.2].
+shb[hasFrequency  -> 123.2].
+wkj[hasFrequency  -> 122.8].
+ubj[hasFrequency  -> 122.35].
+mbe[hasFrequency  -> 122.7].
+akj[hasFrequency  -> 123.4].
+kmi[hasFrequency  -> 129.275].
+kkj[hasFrequency  -> 123].
+hsg[hasFrequency  -> 132.35].
+kmj[hasFrequency  -> 122.8].
+ngs[hasFrequency  -> 123.2].
+asj[hasFrequency  -> 122.8].
+toy[hasFrequency  -> 132.35].
+ntq[hasFrequency  -> 123].
+okj[hasFrequency  -> 122.8].
+izo[hasFrequency  -> 125.9].
+kcz[hasFrequency  -> 126.7].
+ttj[hasFrequency  -> 123.5].
+tks[hasFrequency  -> 123.5].
+iwj[hasFrequency  -> 123.5].
+aoj[hasFrequency  -> 123.5].
+gaj[hasFrequency  -> 123.5].
+axt[hasFrequency  -> 123.2].
+msj[hasFrequency  -> 123.2].
+onj[hasFrequency  -> 130.25].
+syo[hasFrequency  -> 119.1].
+hac[hasFrequency  -> 123.2].
+oim[hasFrequency  -> 123.2].
+gmp[hasFrequency  -> 126.7].
+isg[hasFrequency  -> 123.5].
+mmy[hasFrequency  -> 123.2].
+sha[hasFrequency  -> 126.7].
+fni[hasFrequency  -> 122.35].
+crl[hasFrequency  -> 122.725].
+wat[hasFrequency  -> 123.2].
+ryg[hasFrequency  -> 123.5].
+wmi[hasFrequency  -> 123.2].
+rze[hasFrequency  -> 123.2].
+puy[hasFrequency  -> 123.2].
+zad[hasFrequency  -> 123.2].
+bva[hasFrequency  -> 122.1].
+tps[hasFrequency  -> 120].
+bgy[hasFrequency  -> 120.9].
+cia[hasFrequency  -> 122.8].
+ccc[hasFrequency  -> 118.8].
+dje[hasFrequency  -> 133.05].
+hdf[hasFrequency  -> 132.65].
+fmo[hasFrequency  -> 121.7].
+fdh[hasFrequency  -> 122.5].
+gwt[hasFrequency  -> 118.8].
+poz[hasFrequency  -> 123.9].
+wdh[hasFrequency  -> 122.8].
+xry[hasFrequency  -> 118.5].
+gpa[hasFrequency  -> 125.8].
+grz[hasFrequency  -> 121.8].
+lnz[hasFrequency  -> 118.5].
+esb[hasFrequency  -> 119.2].
+kiv[hasFrequency  -> 126.2].
+tgd[hasFrequency  -> 129.175].
+ovb[hasFrequency  -> 121.7].
+dyu[hasFrequency  -> 30.88].
+goj[hasFrequency  -> 34.46].
+kuf[hasFrequency  -> 119].
+lun[hasFrequency  -> 122.8].
+hga[hasFrequency  -> 122.3].
+bbo[hasFrequency  -> 118.65].
+jib[hasFrequency  -> 133].
+hbe[hasFrequency  -> 122.3].
+pzu[hasFrequency  -> 123.275].
+jub[hasFrequency  -> 122.3].
+krt[hasFrequency  -> 132.9].
+dar[hasFrequency  -> 123.25].
+gsm[hasFrequency  -> 123.3].
+skp[hasFrequency  -> 133.75].
+kbl[hasFrequency  -> 123.55].
+bts[hasFrequency  -> 122.1].
+dla[hasFrequency  -> 122.1].
+aae[hasFrequency  -> 134.65].
+czl[hasFrequency  -> 118.3].
+orn[hasFrequency  -> 118.3].
+coo[hasFrequency  -> 122.8].
+oua[hasFrequency  -> 126.7].
+abj[hasFrequency  -> 123.2].
+nim[hasFrequency  -> 123.2].
+mir[hasFrequency  -> 127.2].
+sfa[hasFrequency  -> 121.2].
+lfw[hasFrequency  -> 124.2].
+bzv[hasFrequency  -> 119].
+pnr[hasFrequency  -> 121.7].
+bgf[hasFrequency  -> 26.46].
+nsi[hasFrequency  -> 34.46].
+run[hasFrequency  -> 126.2].
+tnr[hasFrequency  -> 568].
+lbv[hasFrequency  -> 122.1].
+ndj[hasFrequency  -> 123.7].
+fih[hasFrequency  -> 122].
+bko[hasFrequency  -> 122].
+rob[hasFrequency  -> 128.55].
+rba[hasFrequency  -> 122].
+nkc[hasFrequency  -> 126.7].
+cky[hasFrequency  -> 122.1].
+rai[hasFrequency  -> 132.25].
+ovd[hasFrequency  -> 126.7].
+vgo[hasFrequency  -> 122.1].
+puf[hasFrequency  -> 118.2].
+biq[hasFrequency  -> 127.9].
+cly[hasFrequency  -> 121.8].
+rns[hasFrequency  -> 123.375].
+osr[hasFrequency  -> 118.2].
+evn[hasFrequency  -> 120.7].
+svx[hasFrequency  -> 122].
+ugc[hasFrequency  -> 122].
+yyj[hasFrequency  -> 126.7].
+acv[hasFrequency  -> 126.7].
+bfl[hasFrequency  -> 122.1].
+cec[hasFrequency  -> 22.89].
+cic[hasFrequency  -> 122.1].
+eug[hasFrequency  -> 135.25].
+lmt[hasFrequency  -> 122.775].
+mfr[hasFrequency  -> 133.95].
+mod[hasFrequency  -> 122.1].
+mry[hasFrequency  -> 128.425].
+oth[hasFrequency  -> 122.1].
+psc[hasFrequency  -> 126.7].
+rdd[hasFrequency  -> 122.8].
+rdm[hasFrequency  -> 122.1].
+sba[hasFrequency  -> 134.2].
+sbp[hasFrequency  -> 126.7].
+rmq[hasFrequency  -> 122.1].
+tnn[hasFrequency  -> 123.7].
+tyn[hasFrequency  -> 122.7].
+ylw[hasFrequency  -> 132.25].
+ase[hasFrequency  -> 123.2].
+bli[hasFrequency  -> 122.2].
+cld[hasFrequency  -> 122.2].
+geg[hasFrequency  -> 134.25].
+igm[hasFrequency  -> 126.7].
+mce[hasFrequency  -> 122.8].
+mmh[hasFrequency  -> 122.1].
+yum[hasFrequency  -> 122.1].
+prc[hasFrequency  -> 123.2].
+smx[hasFrequency  -> 123.2].
+sts[hasFrequency  -> 126.7].
+vis[hasFrequency  -> 122.8].
+dgo[hasFrequency  -> 122.7].
+hmo[hasFrequency  -> 122.1].
+lto[hasFrequency  -> 124.6].
+upn[hasFrequency  -> 122.1].
+zih[hasFrequency  -> 123.2].
+zlo[hasFrequency  -> 126.7].
+rar[hasFrequency  -> 122.1].
+tna[hasFrequency  -> 126.7].
+xiy[hasFrequency  -> 122.1].
+khn[hasFrequency  -> 122.1].
+cgo[hasFrequency  -> 128.7].
+ynt[hasFrequency  -> 126.7].
+pvu[hasFrequency  -> 122.1].
+btm[hasFrequency  -> 123.2].
+bzn[hasFrequency  -> 135].
+cdc[hasFrequency  -> 125.85].
+cny[hasFrequency  -> 134.6].
+cod[hasFrequency  -> 122.2].
+cpr[hasFrequency  -> 126.7].
+eko[hasFrequency  -> 122.2].
+gcc[hasFrequency  -> 123.2].
+fca[hasFrequency  -> 134.05].
+gtf[hasFrequency  -> 126.7].
+hln[hasFrequency  -> 122.3].
+jac[hasFrequency  -> 128.6].
+lws[hasFrequency  -> 122.3].
+mso[hasFrequency  -> 126.7].
+pih[hasFrequency  -> 122.7].
+rks[hasFrequency  -> 122.2].
+sgu[hasFrequency  -> 122.2].
+twf[hasFrequency  -> 124.025].
+vel[hasFrequency  -> 122.85].
+xuz[hasFrequency  -> 118.3].
+syx[hasFrequency  -> 118.3].
+bkg[hasFrequency  -> 120.5].
+ymm[hasFrequency  -> 128].
+aia[hasFrequency  -> 124.1].
+als[hasFrequency  -> 133.65].
+bff[hasFrequency  -> 122.5].
+bis[hasFrequency  -> 121.7].
+cez[hasFrequency  -> 122.95].
+cys[hasFrequency  -> 123].
+ddc[hasFrequency  -> 118.3].
+dik[hasFrequency  -> 128.7].
+ear[hasFrequency  -> 122.1].
+fmn[hasFrequency  -> 135.4].
+guc[hasFrequency  -> 123].
+ilg[hasFrequency  -> 135.4].
+isn[hasFrequency  -> 122.8].
+lar[hasFrequency  -> 123].
+lbf[hasFrequency  -> 122.8].
+lbl[hasFrequency  -> 123.2].
+lnk[hasFrequency  -> 128.75].
+mck[hasFrequency  -> 122.8].
+mot[hasFrequency  -> 128.5].
+mtj[hasFrequency  -> 122.3].
+pga[hasFrequency  -> 132.4].
+pir[hasFrequency  -> 122.3].
+pub[hasFrequency  -> 123.375].
+riw[hasFrequency  -> 122.3].
+shr[hasFrequency  -> 125.9].
+art[hasFrequency  -> 126.7].
+cmx[hasFrequency  -> 122.8].
+cwa[hasFrequency  -> 122.925].
+dbq[hasFrequency  -> 122.2].
+dec[hasFrequency  -> 126.9].
+dlh[hasFrequency  -> 122.2].
+eau[hasFrequency  -> 134.55].
+elm[hasFrequency  -> 123.275].
+lse[hasFrequency  -> 122.2].
+mkg[hasFrequency  -> 119].
+pah[hasFrequency  -> 124.3].
+stc[hasFrequency  -> 119].
+tol[hasFrequency  -> 128.27].
+tvc[hasFrequency  -> 122.825].
+sce[hasFrequency  -> 123.2].
+suv[hasFrequency  -> 122.7].
+tbu[hasFrequency  -> 133.9].
+vli[hasFrequency  -> 122].
+zqn[hasFrequency  -> 122].
+arm[hasFrequency  -> 122.1].
+bhq[hasFrequency  -> 122.1].
+hti[hasFrequency  -> 135.4].
+mky[hasFrequency  -> 122.2].
+bnk[hasFrequency  -> 126.7].
+ppp[hasFrequency  -> 122.7].
+bme[hasFrequency  -> 135.3].
+bhs[hasFrequency  -> 122.7].
+tsv[hasFrequency  -> 126.7].
+glt[hasFrequency  -> 122.8].
+gff[hasFrequency  -> 122.1].
+hvb[hasFrequency  -> 126.7].
+ldh[hasFrequency  -> 122.1].
+lsy[hasFrequency  -> 122.5].
+avv[hasFrequency  -> 122.5].
+abx[hasFrequency  -> 122.5].
+mim[hasFrequency  -> 123.55].
+hba[hasFrequency  -> 122.5].
+mql[hasFrequency  -> 122.3].
+lst[hasFrequency  -> 132.1].
+mrz[hasFrequency  -> 126.7].
+mya[hasFrequency  -> 122.3].
+nra[hasFrequency  -> 122.15].
+oag[hasFrequency  -> 122.15].
+kta[hasFrequency  -> 122.3].
+pke[hasFrequency  -> 122.3].
+pqq[hasFrequency  -> 123.475].
+cfs[hasFrequency  -> 122.8].
+dbo[hasFrequency  -> 134.35].
+nlk[hasFrequency  -> 123.15].
+tmw[hasFrequency  -> 126.7].
+wga[hasFrequency  -> 123.15].
+tro[hasFrequency  -> 125.95].
+twb[hasFrequency  -> 122].
+ntl[hasFrequency  -> 122].
+dpo[hasFrequency  -> 122.8].
+kns[hasFrequency  -> 122.9].
+mgb[hasFrequency  -> 132.2].
+kgi[hasFrequency  -> 122.1].
+phe[hasFrequency  -> 122.1].
+bwt[hasFrequency  -> 123.3].
+tuo[hasFrequency  -> 122.8].
+dud[hasFrequency  -> 122.1].
+gis[hasFrequency  -> 122.1].
+hlz[hasFrequency  -> 122.1].
+kke[hasFrequency  -> 122.1].
+kat[hasFrequency  -> 119.7].
+npl[hasFrequency  -> 128.1].
+npe[hasFrequency  -> 121.6].
+nsn[hasFrequency  -> 125].
+pmr[hasFrequency  -> 122.8].
+ppq[hasFrequency  -> 123.5].
+rot[hasFrequency  -> 122.55].
+trg[hasFrequency  -> 122.8].
+bhe[hasFrequency  -> 118.4].
+whk[hasFrequency  -> 124.9].
+wre[hasFrequency  -> 125.15].
+wag[hasFrequency  -> 126.4].
+hld[hasFrequency  -> 134.15].
+tae[hasFrequency  -> 118.4].
+yks[hasFrequency  -> 118.4].
+mwx[hasFrequency  -> 126.7].
+cjj[hasFrequency  -> 133.85].
+ikt[hasFrequency  -> 122.3].
+uud[hasFrequency  -> 118.7].
+kja[hasFrequency  -> 121].
+fnj[hasFrequency  -> 123.95].
+lhw[hasFrequency  -> 118.7].
+lxa[hasFrequency  -> 121.9].
+hrb[hasFrequency  -> 123.275].
+jmu[hasFrequency  -> 122.125].
+mdg[hasFrequency  -> 118.4].
+ndg[hasFrequency  -> 122.3].
+ynj[hasFrequency  -> 122.3].
+jgs[hasFrequency  -> 123.275].
+tlc[hasFrequency  -> 122.8].
+lbe[hasFrequency  -> 126.7].
+orh[hasFrequency  -> 123.5].
+pbg[hasFrequency  -> 122.1].
+tcb[hasFrequency  -> 122.1].
+ghb[hasFrequency  -> 128.3].
+zsa[hasFrequency  -> 122.1].
+axm[hasFrequency  -> 123.2].
+yqm[hasFrequency  -> 125.15].
+ytz[hasFrequency  -> 134.15].
+aoo[hasFrequency  -> 118.2].
+bgm[hasFrequency  -> 121.7].
+bkw[hasFrequency  -> 118.2].
+hgr[hasFrequency  -> 132.3].
+jst[hasFrequency  -> 126.7].
+lns[hasFrequency  -> 122.1].
+mgw[hasFrequency  -> 121.9].
+shd[hasFrequency  -> 125.7].
+ith[hasFrequency  -> 132.35].
+gfk[hasFrequency  -> 123].
+aza[hasFrequency  -> 123.375].
+rfd[hasFrequency  -> 125.7].
+abr[hasFrequency  -> 122.1].
+apn[hasFrequency  -> 122.1].
+aty[hasFrequency  -> 128.275].
+bji[hasFrequency  -> 125.1].
+brd[hasFrequency  -> 128.275].
+hib[hasFrequency  -> 121.8].
+imt[hasFrequency  -> 126].
+inl[hasFrequency  -> 128.275].
+rhi[hasFrequency  -> 118.55].
+ack[hasFrequency  -> 126].
+aug[hasFrequency  -> 122.2].
+bhb[hasFrequency  -> 124.6].
+hya[hasFrequency  -> 132.9].
+leb[hasFrequency  -> 126.7].
+mvy[hasFrequency  -> 126.7].
+pqi[hasFrequency  -> 122.8].
+pvc[hasFrequency  -> 122.1].
+rkd[hasFrequency  -> 122.1].
+rut[hasFrequency  -> 126.7].
+slk[hasFrequency  -> 122.8].
+bet[hasFrequency  -> 122.8].
+brw[hasFrequency  -> 133.4].
+cdb[hasFrequency  -> 127.1].
+cdv[hasFrequency  -> 133.4].
+adk[hasFrequency  -> 121.8].
+dlg[hasFrequency  -> 124.8].
+adq[hasFrequency  -> 123.15].
+ena[hasFrequency  -> 124.8].
+hom[hasFrequency  -> 123.2].
+ili[hasFrequency  -> 134.7].
+jnu[hasFrequency  -> 126.7].
+akn[hasFrequency  -> 122.8].
+mcg[hasFrequency  -> 123.2].
+ani[hasFrequency  -> 124.5].
+ome[hasFrequency  -> 122.8].
+otz[hasFrequency  -> 122.2].
+stg[hasFrequency  -> 133.45].
+scc[hasFrequency  -> 126.7].
+sdp[hasFrequency  -> 122.2].
+ksm[hasFrequency  -> 134.5].
+snp[hasFrequency  -> 122.8].
+unk[hasFrequency  -> 123.2].
+vdz[hasFrequency  -> 122.55].
+ahn[hasFrequency  -> 124.025].
+mkl[hasFrequency  -> 122.7].
+hob[hasFrequency  -> 568].
+vct[hasFrequency  -> 126.7].
+aca[hasFrequency  -> 127.5].
+hux[hasFrequency  -> 122.675].
+cme[hasFrequency  -> 121.7].
+slw[hasFrequency  -> 119.6].
+oax[hasFrequency  -> 119.6].
+tam[hasFrequency  -> 119.6].
+vsa[hasFrequency  -> 134.65].
+ver[hasFrequency  -> 126.7].
+flg[hasFrequency  -> 122.1].
+sow[hasFrequency  -> 134.65].
+svc[hasFrequency  -> 122.8].
+yam[hasFrequency  -> 126.7].
+ydf[hasFrequency  -> 122.8].
+yfc[hasFrequency  -> 28.94].
+ygk[hasFrequency  -> 38.13].
+yqg[hasFrequency  -> 119].
+yqt[hasFrequency  -> 25.78].
+yqy[hasFrequency  -> 135.3].
+ysb[hasFrequency  -> 119].
+ysj[hasFrequency  -> 121.8].
+yts[hasFrequency  -> 23.01].
+yyb[hasFrequency  -> 34.46].
+yyg[hasFrequency  -> 126.2].
+yzr[hasFrequency  -> 125.1].
+cmw[hasFrequency  -> 123].
+snu[hasFrequency  -> 128.5].
+vtz[hasFrequency  -> 135.7].
+mdc[hasFrequency  -> 121.9].
+rdn[hasFrequency  -> 118.1].
+swa[hasFrequency  -> 123.55].
+ljg[hasFrequency  -> 118.1].
+wux[hasFrequency  -> 122.5].
+eri[hasFrequency  -> 122.5].
+hvn[hasFrequency  -> 124.8].
+ipt[hasFrequency  -> 133.725].
+sby[hasFrequency  -> 122.5].
+ciu[hasFrequency  -> 127.3].
+esc[hasFrequency  -> 122].
+pln[hasFrequency  -> 126.57].
+bfd[hasFrequency  -> 122.8].
+duj[hasFrequency  -> 124.65].
+fkl[hasFrequency  -> 132.85].
+jhw[hasFrequency  -> 268.3].
+pkb[hasFrequency  -> 125.7].
+yzf[hasFrequency  -> 126.1].
+kdh[hasFrequency  -> 132.85].
+ahb[hasFrequency  -> 119.1].
+elq[hasFrequency  -> 134.15].
+has[hasFrequency  -> 122.4].
+med[hasFrequency  -> 122.8].
+tuu[hasFrequency  -> 126.25].
+tif[hasFrequency  -> 122.2].
+ynb[hasFrequency  -> 122.2].
+awz[hasFrequency  -> 128.175].
+buz[hasFrequency  -> 122.3].
+kih[hasFrequency  -> 128.175].
+bdh[hasFrequency  -> 122.3].
+ifn[hasFrequency  -> 123.375].
+bnd[hasFrequency  -> 127.7].
+mhd[hasFrequency  -> 123.2].
+lrr[hasFrequency  -> 124.5].
+lfm[hasFrequency  -> 121.9].
+syz[hasFrequency  -> 119].
+tbz[hasFrequency  -> 127.45].
+zbr[hasFrequency  -> 123.55].
+zah[hasFrequency  -> 122.8].
+azi[hasFrequency  -> 122.7].
+sll[hasFrequency  -> 135.175].
+mux[hasFrequency  -> 123.275].
+pew[hasFrequency  -> 122.1].
+skt[hasFrequency  -> 122.1].
+bgw[hasFrequency  -> 30.87].
+bsr[hasFrequency  -> 124.5].
+njf[hasFrequency  -> 124.5].
+isu[hasFrequency  -> 26].
+riy[hasFrequency  -> 120.6].
+fru[hasFrequency  -> 124.5].
+hrk[hasFrequency  -> 121.9].
+krr[hasFrequency  -> 34.02].
+mrv[hasFrequency  -> 34.46].
+rov[hasFrequency  -> 126.2].
+vog[hasFrequency  -> 123.25].
+goi[hasFrequency  -> 123.7].
+cgp[hasFrequency  -> 123.25].
+lko[hasFrequency  -> 126.7].
+xsb[hasFrequency  -> 120.1].
+dwc[hasFrequency  -> 133.4].
+atq[hasFrequency  -> 125.675].
+ssg[hasFrequency  -> 118.4].
+mln[hasFrequency  -> 120.1].
+bjz[hasFrequency  -> 122.8].
+rjl[hasFrequency  -> 132.575].
+pna[hasFrequency  -> 123].
+eas[hasFrequency  -> 135.15].
+sdr[hasFrequency  -> 121.15].
+lde[hasFrequency  -> 132.95].
+aho[hasFrequency  -> 119.4].
+cag[hasFrequency  -> 128.175].
+clj[hasFrequency  -> 121.9].
+tsr[hasFrequency  -> 123.15].
+scu[hasFrequency  -> 127.7].
+vvi[hasFrequency  -> 118.8].
+rmf[hasFrequency  -> 133.9].
+vol[hasFrequency  -> 133.9].
+klu[hasFrequency  -> 129.45].
+sjj[hasFrequency  -> 122.3].
+ias[hasFrequency  -> 122.3].
+sbz[hasFrequency  -> 123.475].
+ach[hasFrequency  -> 122.3].
+ksc[hasFrequency  -> 122.1].
+dnk[hasFrequency  -> 122.1].
+lwo[hasFrequency  -> 126.7].
+ods[hasFrequency  -> 122.8].
+lil[hasFrequency  -> 122.3].
+bds[hasFrequency  -> 133.275].
+lug[hasFrequency  -> 122.3].
+eba[hasFrequency  -> 123.275].
+bnx[hasFrequency  -> 126.2].
+lig[hasFrequency  -> 120.85].
+etz[hasFrequency  -> 121.7].
+fsc[hasFrequency  -> 126.2].
+cfr[hasFrequency  -> 126.3].
+ipl[hasFrequency  -> 125].
+yzz[hasFrequency  -> 123.8].
+qbc[hasFrequency  -> 126.3].
+ybl[hasFrequency  -> 122.2].
+ycd[hasFrequency  -> 122.2].
+ycg[hasFrequency  -> 123.5].
+ydq[hasFrequency  -> 126.925].
+yka[hasFrequency  -> 134.25].
+ypr[hasFrequency  -> 123].
+ypw[hasFrequency  -> 122.5].
+yqq[hasFrequency  -> 128].
+yqz[hasFrequency  -> 122.5].
+ywl[hasFrequency  -> 126.7].
+yxc[hasFrequency  -> 123.2].
+yxj[hasFrequency  -> 126.35].
+yxs[hasFrequency  -> 123.2].
+yxt[hasFrequency  -> 126.7].
+yxy[hasFrequency  -> 135.05].
+yyd[hasFrequency  -> 126.7].
+yyf[hasFrequency  -> 123.7].
+yzp[hasFrequency  -> 123].
+yzt[hasFrequency  -> 126.7].
+zmt[hasFrequency  -> 122.1].
+hhn[hasFrequency  -> 122.1].
+fmm[hasFrequency  -> 126.7].
+boh[hasFrequency  -> 123.2].
+blk[hasFrequency  -> 123.45].
+pik[hasFrequency  -> 122.7].
+cfn[hasFrequency  -> 122.95].
+bzg[hasFrequency  -> 123.875].
+szz[hasFrequency  -> 132.525].
+alw[hasFrequency  -> 123.375].
+eat[hasFrequency  -> 124.575].
+pie[hasFrequency  -> 122.3].
+puw[hasFrequency  -> 123.475].
+ykm[hasFrequency  -> 124].
+lrh[hasFrequency  -> 128.3].
+rdz[hasFrequency  -> 134.6].
+ccf[hasFrequency  -> 135.025].
+pgf[hasFrequency  -> 121.9].
+tuf[hasFrequency  -> 123.55].
+ciy[hasFrequency  -> 118.65].
+ktn[hasFrequency  -> 122.2].
+dom[hasFrequency  -> 135.625].
+sbh[hasFrequency  -> 122.2].
+cpx[hasFrequency  -> 124].
+maz[hasFrequency  -> 121.9].
+vqs[hasFrequency  -> 118.5].
+nev[hasFrequency  -> 132.85].
+axa[hasFrequency  -> 123.475].
+eis[hasFrequency  -> 126.7].
+vij[hasFrequency  -> 118.5].
+yfb[hasFrequency  -> 126.85].
+sck[hasFrequency  -> 124.7].
+pgd[hasFrequency  -> 134.3].
+tay[hasFrequency  -> 134.5].
+ivl[hasFrequency  -> 121.7].
+joe[hasFrequency  -> 126.7].
+jyv[hasFrequency  -> 124.7].
+kem[hasFrequency  -> 122.1].
+kaj[hasFrequency  -> 126.7].
+kok[hasFrequency  -> 122.1].
+kao[hasFrequency  -> 123].
+kuo[hasFrequency  -> 123.9].
+mhq[hasFrequency  -> 124].
+oul[hasFrequency  -> 122.2].
+por[hasFrequency  -> 126.7].
+rvn[hasFrequency  -> 122.2].
+svl[hasFrequency  -> 122.2].
+tmp[hasFrequency  -> 121].
+tku[hasFrequency  -> 124.4].
+vaa[hasFrequency  -> 132.75].
+bma[hasFrequency  -> 122.5].
+nrk[hasFrequency  -> 121].
+gzp[hasFrequency  -> 124.4].
+cee[hasFrequency  -> 128.65].
+hea[hasFrequency  -> 121.8].
+ixu[hasFrequency  -> 122.075].
+bdq[hasFrequency  -> 122.5].
+bho[hasFrequency  -> 120.8].
+idr[hasFrequency  -> 122.8].
+jlr[hasFrequency  -> 134.1].
+nag[hasFrequency  -> 128.1].
+rpr[hasFrequency  -> 118.6].
+stv[hasFrequency  -> 123.7].
+udr[hasFrequency  -> 119.75].
+ixb[hasFrequency  -> 135.9].
+bbi[hasFrequency  -> 34.46].
+gop[hasFrequency  -> 126.2].
+gau[hasFrequency  -> 118.6].
+dib[hasFrequency  -> 120.1].
+pat[hasFrequency  -> 127].
+ixr[hasFrequency  -> 123.8].
+ixd[hasFrequency  -> 120.1].
+kuu[hasFrequency  -> 121.9].
+ixc[hasFrequency  -> 122.5].
+ded[hasFrequency  -> 118.6].
+dhm[hasFrequency  -> 135.3].
+ixj[hasFrequency  -> 122.7].
+knu[hasFrequency  -> 119.2].
+luh[hasFrequency  -> 118.1].
+ixl[hasFrequency  -> 128.8].
+sxr[hasFrequency  -> 132.125].
+alh[hasFrequency  -> 121.9].
+bqb[hasFrequency  -> 122.5].
+dcn[hasFrequency  -> 118.1].
+epr[hasFrequency  -> 118.1].
+get[hasFrequency  -> 128.6].
+rvt[hasFrequency  -> 134.5].
+zne[hasFrequency  -> 118.1].
+pbo[hasFrequency  -> 122.5].
+knx[hasFrequency  -> 122.2].
+lea[hasFrequency  -> 122.2].
+xch[hasFrequency  -> 122.1].
+pad[hasFrequency  -> 123.375].
+nrn[hasFrequency  -> 128.5].
+ldy[hasFrequency  -> 124.8].
+cal[hasFrequency  -> 121.9].
+koi[hasFrequency  -> 128.85].
+lsi[hasFrequency  -> 126.7].
+wic[hasFrequency  -> 118.1].
+ily[hasFrequency  -> 118.6].
+beb[hasFrequency  -> 122].
+syy[hasFrequency  -> 122].
+brr[hasFrequency  -> 122.2].
+tre[hasFrequency  -> 124.4].
+gse[hasFrequency  -> 122.2].
+nyo[hasFrequency  -> 126.7].
+rlg[hasFrequency  -> 122.1].
+bjl[hasFrequency  -> 127.2].
+fez[hasFrequency  -> 118.4].
+oud[hasFrequency  -> 134.8].
+bjm[hasFrequency  -> 121.9].
+rgs[hasFrequency  -> 123.4].
+len[hasFrequency  -> 118.4].
+slm[hasFrequency  -> 125.1].
+vll[hasFrequency  -> 122.8].
+egc[hasFrequency  -> 122.2].
+pis[hasFrequency  -> 126.7].
+aok[hasFrequency  -> 122.2].
+kva[hasFrequency  -> 135.325].
+mjt[hasFrequency  -> 122.3].
+lmp[hasFrequency  -> 122.3].
+pnl[hasFrequency  -> 122.3].
+reg[hasFrequency  -> 122.8].
+trs[hasFrequency  -> 134.3].
+aoi[hasFrequency  -> 123.5].
+aoe[hasFrequency  -> 123.375].
+dok[hasFrequency  -> 123.5].
+iev[hasFrequency  -> 122.8].
+cek[hasFrequency  -> 127.7].
+pee[hasFrequency  -> 122.8].
+voz[hasFrequency  -> 128.22].
+rtw[hasFrequency  -> 123].
+ufa[hasFrequency  -> 122.2].
+bzo[hasFrequency  -> 134].
+aar[hasFrequency  -> 123.55].
+alf[hasFrequency  -> 122.2].
+fde[hasFrequency  -> 122.2].
+bnn[hasFrequency  -> 126.7].
+boo[hasFrequency  -> 122.8].
+bdu[hasFrequency  -> 135.3].
+eve[hasFrequency  -> 122.8].
+vdb[hasFrequency  -> 127.4].
+fro[hasFrequency  -> 135.5].
+hau[hasFrequency  -> 125.5].
+ksu[hasFrequency  -> 123.475].
+kkn[hasFrequency  -> 123.5].
+mol[hasFrequency  -> 126.25].
+ola[hasFrequency  -> 132.55].
+hov[hasFrequency  -> 123.5].
+rrs[hasFrequency  -> 122.8].
+lyr[hasFrequency  -> 124].
+sdn[hasFrequency  -> 122.15].
+sog[hasFrequency  -> 128.175].
+srp[hasFrequency  -> 122.7].
+ssj[hasFrequency  -> 118.5].
+plq[hasFrequency  -> 124.3].
+fkb[hasFrequency  -> 118.5].
+dnd[hasFrequency  -> 124.75].
+mmx[hasFrequency  -> 122.7].
+sft[hasFrequency  -> 123.55].
+vst[hasFrequency  -> 122.2].
+pdv[hasFrequency  -> 133.4].
+osi[hasFrequency  -> 123.25].
+zaz[hasFrequency  -> 123.25].
+dnr[hasFrequency  -> 128.525].
+tln[hasFrequency  -> 126.7].
+psr[hasFrequency  -> 123.25].
+pmf[hasFrequency  -> 134.075].
+peg[hasFrequency  -> 123.55].
+brq[hasFrequency  -> 122.8].
+hir[hasFrequency  -> 122.1].
+ybc[hasFrequency  -> 122.1].
+ybg[hasFrequency  -> 122.55].
+ygl[hasFrequency  -> 124.4].
+ygw[hasFrequency  -> 122.95].
+yhm[hasFrequency  -> 123.2].
+yhy[hasFrequency  -> 122.1].
+ymt[hasFrequency  -> 122.1].
+yoj[hasFrequency  -> 122.8].
+yop[hasFrequency  -> 126.4].
+yqu[hasFrequency  -> 122.8].
+ysm[hasFrequency  -> 135.2].
+yuy[hasFrequency  -> 122.8].
+yvo[hasFrequency  -> 122.1].
+yvp[hasFrequency  -> 128.7].
+ywk[hasFrequency  -> 122.1].
+yxx[hasFrequency  -> 127.2].
+yyy[hasFrequency  -> 121.2].
+yzv[hasFrequency  -> 123].
+zbf[hasFrequency  -> 122.5].
+sdl[hasFrequency  -> 127.65].
+ble[hasFrequency  -> 133.15].
+fsp[hasFrequency  -> 123].
+tij[hasFrequency  -> 123.15].
+cyo[hasFrequency  -> 122.5].
+son[hasFrequency  -> 135.3].
+hkk[hasFrequency  -> 122.8].
+ivc[hasFrequency  -> 128.4].
+tiu[hasFrequency  -> 135.45].
+wsz[hasFrequency  -> 124.35].
+bci[hasFrequency  -> 23.21].
+bkq[hasFrequency  -> 121.9].
+ctl[hasFrequency  -> 122.35].
+isa[hasFrequency  -> 34.46].
+rok[hasFrequency  -> 128.7].
+bdb[hasFrequency  -> 122.3].
+cnj[hasFrequency  -> 124.95].
+emd[hasFrequency  -> 128.3].
+lre[hasFrequency  -> 123.55].
+mov[hasFrequency  -> 122.3].
+rma[hasFrequency  -> 133.4].
+doy[hasFrequency  -> 118.2].
+ddg[hasFrequency  -> 133.6].
+ntg[hasFrequency  -> 133.6].
+dqa[hasFrequency  -> 133.4].
+hia[hasFrequency  -> 121.7].
+jiq[hasFrequency  -> 118.2].
+nbs[hasFrequency  -> 122.1].
+cif[hasFrequency  -> 122.1].
+cih[hasFrequency  -> 122.075].
+dsn[hasFrequency  -> 118.9].
+dat[hasFrequency  -> 126.9].
+erl[hasFrequency  -> 127.5].
+het[hasFrequency  -> 133.7].
+bav[hasFrequency  -> 125.6].
+tgo[hasFrequency  -> 118.9].
+wua[hasFrequency  -> 121.9].
+hlh[hasFrequency  -> 123.55].
+xil[hasFrequency  -> 119.9].
+ycu[hasFrequency  -> 134.15].
+bhy[hasFrequency  -> 122.1].
+cgd[hasFrequency  -> 122.1].
+dyg[hasFrequency  -> 122.2].
+kwl[hasFrequency  -> 128.7].
+zuh[hasFrequency  -> 122.2].
+lzh[hasFrequency  -> 228.9].
+zha[hasFrequency  -> 256.6].
+lya[hasFrequency  -> 263.2].
+xfn[hasFrequency  -> 364.2].
+yih[hasFrequency  -> 126.7].
+inc[hasFrequency  -> 364.2].
+jng[hasFrequency  -> 122.2].
+xnn[hasFrequency  -> 125.9].
+eny[hasFrequency  -> 126.7].
+uyn[hasFrequency  -> 122.2].
+zhy[hasFrequency  -> 123].
+lum[hasFrequency  -> 123.55].
+aqg[hasFrequency  -> 122.2].
+czx[hasFrequency  -> 126.4].
+fug[hasFrequency  -> 122.2].
+kow[hasFrequency  -> 123.55].
+jdz[hasFrequency  -> 122.8].
+jiu[hasFrequency  -> 122.8].
+lyg[hasFrequency  -> 122.1].
+hyn[hasFrequency  -> 122.55].
+lyi[hasFrequency  -> 122.1].
+hfe[hasFrequency  -> 118.5].
+jjn[hasFrequency  -> 125.9].
+txn[hasFrequency  -> 118.5].
+wef[hasFrequency  -> 126.7].
+wus[hasFrequency  -> 122.2].
+wnz[hasFrequency  -> 135.1].
+ynz[hasFrequency  -> 122.2].
+yiw[hasFrequency  -> 123.55].
+hsn[hasFrequency  -> 134.825].
+dax[hasFrequency  -> 122.2].
+gys[hasFrequency  -> 122.2].
+lzo[hasFrequency  -> 128.6].
+mxz[hasFrequency  -> 124.6].
+yye[hasFrequency  -> 121.4].
+nay[hasFrequency  -> 126.125].
+cul[hasFrequency  -> 121.7].
+ctm[hasFrequency  -> 123.15].
+cen[hasFrequency  -> 23.66].
+cpe[hasFrequency  -> 118.7].
+cjs[hasFrequency  -> 122.3].
+cvm[hasFrequency  -> 122.3].
+tpq[hasFrequency  -> 122.2].
+clq[hasFrequency  -> 132.575].
+jal[hasFrequency  -> 126.7].
+lzc[hasFrequency  -> 126.4].
+lmm[hasFrequency  -> 49.9].
+lap[hasFrequency  -> 29.74].
+mam[hasFrequency  -> 126.4].
+mxl[hasFrequency  -> 119.5].
+mtt[hasFrequency  -> 120.2].
+nld[hasFrequency  -> 121.3].
+paz[hasFrequency  -> 119.9].
+pds[hasFrequency  -> 121.9].
+pqm[hasFrequency  -> 131.4].
+pxm[hasFrequency  -> 308.8].
+rex[hasFrequency  -> 34.46].
+tgz[hasFrequency  -> 118.3].
+tap[hasFrequency  -> 125.4].
+ros[hasFrequency  -> 121].
+aep[hasFrequency  -> 132.25].
+cor[hasFrequency  -> 122].
+mdz[hasFrequency  -> 126.7].
+igr[hasFrequency  -> 122].
+rel[hasFrequency  -> 122.3].
+fte[hasFrequency  -> 134].
+ush[hasFrequency  -> 381.4].
+brc[hasFrequency  -> 122.3].
+aju[hasFrequency  -> 123.275].
+aru[hasFrequency  -> 122.3].
+plu[hasFrequency  -> 123.2].
+cac[hasFrequency  -> 122.8].
+cgr[hasFrequency  -> 122.1].
+cgb[hasFrequency  -> 122.1].
+igu[hasFrequency  -> 122.3].
+fln[hasFrequency  -> 133.6].
+for[hasFrequency  -> 126.7].
+gyn[hasFrequency  -> 122.3].
+ios[hasFrequency  -> 119.5].
+ipn[hasFrequency  -> 119.1].
+jpa[hasFrequency  -> 118.8].
+jdo[hasFrequency  -> 114.9].
+joi[hasFrequency  -> 128.625].
+vcp[hasFrequency  -> 121.3].
+ldb[hasFrequency  -> 121.9].
+mgf[hasFrequency  -> 122.45].
+mcz[hasFrequency  -> 119.1].
+nvt[hasFrequency  -> 119.1].
+poa[hasFrequency  -> 119.9].
+pfb[hasFrequency  -> 118.3].
+bps[hasFrequency  -> 128.4].
+vdc[hasFrequency  -> 134.325].
+sdu[hasFrequency  -> 121.9].
+rao[hasFrequency  -> 122.5].
+nat[hasFrequency  -> 118.3].
+slz[hasFrequency  -> 122.2].
+cgh[hasFrequency  -> 124.875].
+sjp[hasFrequency  -> 126.7].
+the[hasFrequency  -> 122.2].
+udi[hasFrequency  -> 118.5].
+uba[hasFrequency  -> 128.5].
+vix[hasFrequency  -> 132.6].
+ari[hasFrequency  -> 118.5].
+cpo[hasFrequency  -> 122.5].
+bba[hasFrequency  -> 122.1].
+cjc[hasFrequency  -> 122].
+puq[hasFrequency  -> 124.75].
+iqq[hasFrequency  -> 126].
+anf[hasFrequency  -> 122].
+ccp[hasFrequency  -> 122.1].
+ipc[hasFrequency  -> 122.1].
+zos[hasFrequency  -> 128.6].
+lsc[hasFrequency  -> 122].
+zco[hasFrequency  -> 123.375].
+pmc[hasFrequency  -> 128.725].
+agt[hasFrequency  -> 128.725].
+cbb[hasFrequency  -> 121.9].
+pcl[hasFrequency  -> 118.3].
+tgi[hasFrequency  -> 133.8].
+cix[hasFrequency  -> 118.3].
+ayp[hasFrequency  -> 122.1].
+ans[hasFrequency  -> 126.7].
+ata[hasFrequency  -> 118.3].
+jau[hasFrequency  -> 122].
+jul[hasFrequency  -> 128.4].
+cja[hasFrequency  -> 126.7].
+tbp[hasFrequency  -> 122].
+huu[hasFrequency  -> 119.4].
+iqt[hasFrequency  -> 127.8].
+aqp[hasFrequency  -> 135.3].
+tru[hasFrequency  -> 121.9].
+tpp[hasFrequency  -> 122.5].
+tcq[hasFrequency  -> 119.4].
+pem[hasFrequency  -> 132.7].
+piu[hasFrequency  -> 119.4].
+cuz[hasFrequency  -> 119.8].
+dou[hasFrequency  -> 121.8].
+ybr[hasFrequency  -> 122.5].
+yll[hasFrequency  -> 119.4].
+yqf[hasFrequency  -> 125.25].
+yql[hasFrequency  -> 121.9].
+yxh[hasFrequency  -> 118.3].
+rnb[hasFrequency  -> 132.1].
+jkg[hasFrequency  -> 123.275].
+mxx[hasFrequency  -> 118.3].
+kid[hasFrequency  -> 236.6].
+klr[hasFrequency  -> 118.3].
+had[hasFrequency  -> 124.075].
+evg[hasFrequency  -> 126.7].
+gev[hasFrequency  -> 122.8].
+krf[hasFrequency  -> 118.3].
+lyc[hasFrequency  -> 124.9].
+oer[hasFrequency  -> 121.225].
+krn[hasFrequency  -> 34.46].
+ume[hasFrequency  -> 118.3].
+vhm[hasFrequency  -> 123.85].
+osd[hasFrequency  -> 125.9].
+hfs[hasFrequency  -> 126.525].
+ksd[hasFrequency  -> 128.225].
+lla[hasFrequency  -> 120.825].
+vby[hasFrequency  -> 119.8].
+agh[hasFrequency  -> 121.9].
+zal[hasFrequency  -> 125.35].
+cdr[hasFrequency  -> 124.525].
+ktt[hasFrequency  -> 133.3].
+win[hasFrequency  -> 123.375].
+bja[hasFrequency  -> 121.3].
+qsf[hasFrequency  -> 129.7].
+blj[hasFrequency  -> 118.4].
+tlm[hasFrequency  -> 118.875].
+bsk[hasFrequency  -> 236.6].
+toe[hasFrequency  -> 119.4].
+dza[hasFrequency  -> 122.3].
+esu[hasFrequency  -> 122.3].
+ozz[hasFrequency  -> 126.7].
+agf[hasFrequency  -> 125.65].
+pgx[hasFrequency  -> 122.5].
+dcm[hasFrequency  -> 132.87].
+lpy[hasFrequency  -> 134.85].
+aur[hasFrequency  -> 290.6].
+lrt[hasFrequency  -> 122.5].
+lai[hasFrequency  -> 123.55].
+uip[hasFrequency  -> 122.5].
+cay[hasFrequency  -> 133.5].
+bhj[hasFrequency  -> 118.5].
+bhu[hasFrequency  -> 122.5].
+hbx[hasFrequency  -> 118.5].
+jga[hasFrequency  -> 118].
+raj[hasFrequency  -> 135.65].
+gwl[hasFrequency  -> 118].
+bfn[hasFrequency  -> 122.1].
+els[hasFrequency  -> 122.1].
+ell[hasFrequency  -> 125.95].
+grj[hasFrequency  -> 118.8].
+hds[hasFrequency  -> 126.4].
+kim[hasFrequency  -> 133.85].
+mqp[hasFrequency  -> 121.9].
+hla[hasFrequency  -> 119.7].
+mgh[hasFrequency  -> 349.3].
+plz[hasFrequency  -> 122.85].
+pbz[hasFrequency  -> 122.95].
+phw[hasFrequency  -> 119.7].
+pzb[hasFrequency  -> 122.375].
+ptg[hasFrequency  -> 127.8].
+rcb[hasFrequency  -> 119.1].
+utn[hasFrequency  -> 119.7].
+utt[hasFrequency  -> 122.3].
+frw[hasFrequency  -> 135.05].
+bbk[hasFrequency  -> 123.475].
+mub[hasFrequency  -> 122.3].
+gbe[hasFrequency  -> 124.7].
+mts[hasFrequency  -> 132.8].
+lvi[hasFrequency  -> 123.275].
+nla[hasFrequency  -> 123.2].
+bew[hasFrequency  -> 122.2].
+
+
+// airport details
+
+atl[hasAirportName -> "Hartsfield - Jackson Atlanta International Airport"^^\string].
+atl[hasElevation -> 1026].
+atl[hasLattitude -> 33.6366996765137].
+atl[hasLongitude -> -84.4281005859375].
+atl[hasRunway(T0) -> 12390].
+atl[hasRunway(T1) -> 11890].
+atl[hasRunway(T2) -> 11390].
+atl[hasRunway(T3) -> 10890].
+atl[hasRunway(T4) -> 10390].
+anc[hasAirportName -> "Anchorage Ted Stevens"^^\string].
+anc[hasElevation -> 151].
+anc[hasLattitude -> 61.1744003295898].
+anc[hasLongitude -> -149.996002197266].
+anc[hasRunway(T0) -> 12400].
+anc[hasRunway(T1) -> 11900].
+anc[hasRunway(T2) -> 11400].
+aus[hasAirportName -> "Austin Bergstrom International Airport"^^\string].
+aus[hasElevation -> 542].
+aus[hasLattitude -> 30.1944999694824].
+aus[hasLongitude -> -97.6698989868164].
+aus[hasRunway(T0) -> 12250].
+aus[hasRunway(T1) -> 11750].
+bna[hasAirportName -> "Nashville International Airport"^^\string].
+bna[hasElevation -> 599].
+bna[hasLattitude -> 36.1245002746582].
+bna[hasLongitude -> -86.6781997680664].
+bna[hasRunway(T0) -> 11030].
+bna[hasRunway(T1) -> 10530].
+bna[hasRunway(T2) -> 10030].
+bna[hasRunway(T3) -> 9530].
+bos[hasAirportName -> "Boston Logan"^^\string].
+bos[hasElevation -> 19].
+bos[hasLattitude -> 42.36429977].
+bos[hasLongitude -> -71.00520325].
+bos[hasRunway(T0) -> 10083].
+bos[hasRunway(T1) -> 9583].
+bos[hasRunway(T2) -> 9083].
+bos[hasRunway(T3) -> 8583].
+bos[hasRunway(T4) -> 8083].
+bos[hasRunway(T5) -> 7583].
+bwi[hasAirportName -> "Baltimore/Washington International Airport"^^\string].
+bwi[hasElevation -> 143].
+bwi[hasLattitude -> 39.17539978].
+bwi[hasLongitude -> -76.66829681].
+bwi[hasRunway(T0) -> 10502].
+bwi[hasRunway(T1) -> 10002].
+bwi[hasRunway(T2) -> 9502].
+dca[hasAirportName -> "Ronald Reagan Washington National Airport"^^\string].
+dca[hasElevation -> 14].
+dca[hasLattitude -> 38.8521003723145].
+dca[hasLongitude -> -77.0376968383789].
+dca[hasRunway(T0) -> 7169].
+dca[hasRunway(T1) -> 6669].
+dca[hasRunway(T2) -> 6169].
+dfw[hasAirportName -> "Dallas/Fort Worth International Airport"^^\string].
+dfw[hasElevation -> 607].
+dfw[hasLattitude -> 32.896800994873].
+dfw[hasLongitude -> -97.0380020141602].
+dfw[hasRunway(T0) -> 13401].
+dfw[hasRunway(T1) -> 12901].
+dfw[hasRunway(T2) -> 12401].
+dfw[hasRunway(T3) -> 11901].
+dfw[hasRunway(T4) -> 11401].
+dfw[hasRunway(T5) -> 10901].
+dfw[hasRunway(T6) -> 10401].
+fll[hasAirportName -> "Fort Lauderdale/Hollywood International Airport"^^\string].
+fll[hasElevation -> 64].
+fll[hasLattitude -> 26.0725994110107].
+fll[hasLongitude -> -80.152702331543].
+fll[hasRunway(T0) -> 9000].
+fll[hasRunway(T1) -> 8500].
+iad[hasAirportName -> "Washington Dulles International Airport"^^\string].
+iad[hasElevation -> 313].
+iad[hasLattitude -> 38.94449997].
+iad[hasLongitude -> -77.45580292].
+iad[hasRunway(T0) -> 11500].
+iad[hasRunway(T1) -> 11000].
+iad[hasRunway(T2) -> 10500].
+iad[hasRunway(T3) -> 10000].
+iah[hasAirportName -> "George Bush Intercontinental"^^\string].
+iah[hasElevation -> 96].
+iah[hasLattitude -> 29.9843997955322].
+iah[hasLongitude -> -95.3414001464844].
+iah[hasRunway(T0) -> 12001].
+iah[hasRunway(T1) -> 11501].
+iah[hasRunway(T2) -> 11001].
+iah[hasRunway(T3) -> 10501].
+iah[hasRunway(T4) -> 10001].
+jfk[hasAirportName -> "New York John F. Kennedy International Airport"^^\string].
+jfk[hasElevation -> 12].
+jfk[hasLattitude -> 40.63980103].
+jfk[hasLongitude -> -73.77890015].
+jfk[hasRunway(T0) -> 14511].
+jfk[hasRunway(T1) -> 14011].
+jfk[hasRunway(T2) -> 13511].
+jfk[hasRunway(T3) -> 13011].
+lax[hasAirportName -> "Los Angeles International Airport"^^\string].
+lax[hasElevation -> 127].
+lax[hasLattitude -> 33.94250107].
+lax[hasLongitude -> -118.4079971].
+lax[hasRunway(T0) -> 12091].
+lax[hasRunway(T1) -> 11591].
+lax[hasRunway(T2) -> 11091].
+lax[hasRunway(T3) -> 10591].
+lga[hasAirportName -> "New York La Guardia"^^\string].
+lga[hasElevation -> 20].
+lga[hasLattitude -> 40.77719879].
+lga[hasLongitude -> -73.87259674].
+lga[hasRunway(T0) -> 7003].
+lga[hasRunway(T1) -> 6503].
+mco[hasAirportName -> "Orlando International Airport"^^\string].
+mco[hasElevation -> 96].
+mco[hasLattitude -> 28.4293994903564].
+mco[hasLongitude -> -81.3089981079102].
+mco[hasRunway(T0) -> 12005].
+mco[hasRunway(T1) -> 11505].
+mco[hasRunway(T2) -> 11005].
+mco[hasRunway(T3) -> 10505].
+mia[hasAirportName -> "Miami International Airport"^^\string].
+mia[hasElevation -> 8].
+mia[hasLattitude -> 25.7931995391846].
+mia[hasLongitude -> -80.2906036376953].
+mia[hasRunway(T0) -> 13016].
+mia[hasRunway(T1) -> 12516].
+mia[hasRunway(T2) -> 12016].
+mia[hasRunway(T3) -> 11516].
+msp[hasAirportName -> "Minneapolis-St.Paul International Airport"^^\string].
+msp[hasElevation -> 841].
+msp[hasLattitude -> 44.8819999695].
+msp[hasLongitude -> -93.2218017578].
+msp[hasRunway(T0) -> 11006].
+msp[hasRunway(T1) -> 10506].
+msp[hasRunway(T2) -> 10006].
+msp[hasRunway(T3) -> 9506].
+ord[hasAirportName -> "Chicago O'Hare International Airport"^^\string].
+ord[hasElevation -> 672].
+ord[hasLattitude -> 41.97859955].
+ord[hasLongitude -> -87.90480042].
+ord[hasRunway(T0) -> 13000].
+ord[hasRunway(T1) -> 12500].
+ord[hasRunway(T2) -> 12000].
+ord[hasRunway(T3) -> 11500].
+ord[hasRunway(T4) -> 11000].
+ord[hasRunway(T5) -> 10500].
+ord[hasRunway(T6) -> 10000].
+pbi[hasAirportName -> "Palm Beach International Airport"^^\string].
+pbi[hasElevation -> 19].
+pbi[hasLattitude -> 26.6832008361816].
+pbi[hasLongitude -> -80.0955963134766].
+pbi[hasRunway(T0) -> 10000].
+pbi[hasRunway(T1) -> 9500].
+pbi[hasRunway(T2) -> 9000].
+phx[hasAirportName -> "Phoenix Sky Harbor International Airport"^^\string].
+phx[hasElevation -> 1135].
+phx[hasLattitude -> 33.4342994689941].
+phx[hasLongitude -> -112.012001037598].
+phx[hasRunway(T0) -> 11489].
+phx[hasRunway(T1) -> 10989].
+phx[hasRunway(T2) -> 10489].
+rdu[hasAirportName -> "Raleigh-Durham"^^\string].
+rdu[hasElevation -> 435].
+rdu[hasLattitude -> 35.8776016235352].
+rdu[hasLongitude -> -78.7874984741211].
+rdu[hasRunway(T0) -> 10000].
+rdu[hasRunway(T1) -> 9500].
+rdu[hasRunway(T2) -> 9000].
+sea[hasAirportName -> "Seattle-Tacoma"^^\string].
+sea[hasElevation -> 432].
+sea[hasLattitude -> 47.4490013122559].
+sea[hasLongitude -> -122.30899810791].
+sea[hasRunway(T0) -> 11901].
+sea[hasRunway(T1) -> 11401].
+sea[hasRunway(T2) -> 10901].
+sfo[hasAirportName -> "San Francisco International Airport"^^\string].
+sfo[hasElevation -> 13].
+sfo[hasLattitude -> 37.6189994812012].
+sfo[hasLongitude -> -122.375].
+sfo[hasRunway(T0) -> 11870].
+sfo[hasRunway(T1) -> 11370].
+sfo[hasRunway(T2) -> 10870].
+sfo[hasRunway(T3) -> 10370].
+sjc[hasAirportName -> "Norman Y. Mineta San Jose International Airport"^^\string].
+sjc[hasElevation -> 62].
+sjc[hasLattitude -> 37.3625984191895].
+sjc[hasLongitude -> -121.929000854492].
+sjc[hasRunway(T0) -> 11000].
+sjc[hasRunway(T1) -> 10500].
+sjc[hasRunway(T2) -> 10000].
+tpa[hasAirportName -> "Tampa International Airport"^^\string].
+tpa[hasElevation -> 26].
+tpa[hasLattitude -> 27.9755001068115].
+tpa[hasLongitude -> -82.533203125].
+tpa[hasRunway(T0) -> 11002].
+tpa[hasRunway(T1) -> 10502].
+tpa[hasRunway(T2) -> 10002].
+san[hasAirportName -> "San Diego Lindbergh"^^\string].
+san[hasElevation -> 16].
+san[hasLattitude -> 32.7336006165].
+san[hasLongitude -> -117.190002441].
+san[hasRunway(T0) -> 9400].
+lgb[hasAirportName -> "Long Beach Airport"^^\string].
+lgb[hasElevation -> 60].
+lgb[hasLattitude -> 33.81769943].
+lgb[hasLongitude -> -118.1520004].
+lgb[hasRunway(T0) -> 10003].
+lgb[hasRunway(T1) -> 9503].
+lgb[hasRunway(T2) -> 9003].
+sna[hasAirportName -> "Orange County/Santa Ana, John Wayne"^^\string].
+sna[hasElevation -> 56].
+sna[hasLattitude -> 33.67570114].
+sna[hasLongitude -> -117.8679962].
+sna[hasRunway(T0) -> 5701].
+sna[hasRunway(T1) -> 5201].
+slc[hasAirportName -> "Salt Lake City"^^\string].
+slc[hasElevation -> 56].
+slc[hasLattitude -> 40.7883987426758].
+slc[hasLongitude -> -111.977996826172].
+slc[hasRunway(T0) -> 12002].
+slc[hasRunway(T1) -> 11502].
+slc[hasRunway(T2) -> 11002].
+slc[hasRunway(T3) -> 10502].
+las[hasAirportName -> "Las Vegas Mc Carran"^^\string].
+las[hasElevation -> 2181].
+las[hasLattitude -> 36.08010101].
+las[hasLongitude -> -115.1520004].
+las[hasRunway(T0) -> 14512].
+las[hasRunway(T1) -> 14012].
+las[hasRunway(T2) -> 13512].
+las[hasRunway(T3) -> 13012].
+den[hasAirportName -> "Denver International Airport"^^\string].
+den[hasElevation -> 5433].
+den[hasLattitude -> 39.8616981506348].
+den[hasLongitude -> -104.672996520996].
+den[hasRunway(T0) -> 16000].
+den[hasRunway(T1) -> 15500].
+den[hasRunway(T2) -> 15000].
+den[hasRunway(T3) -> 14500].
+den[hasRunway(T4) -> 14000].
+den[hasRunway(T5) -> 13500].
+hpn[hasAirportName -> "Westchester County"^^\string].
+hpn[hasElevation -> 439].
+hpn[hasLattitude -> 41.0670013427734].
+hpn[hasLongitude -> -73.7076034545898].
+hpn[hasRunway(T0) -> 6549].
+hpn[hasRunway(T1) -> 6049].
+sat[hasAirportName -> "San Antonio"^^\string].
+sat[hasElevation -> 809].
+sat[hasLattitude -> 29.5337009429932].
+sat[hasLongitude -> -98.4698028564453].
+sat[hasRunway(T0) -> 8505].
+sat[hasRunway(T1) -> 8005].
+sat[hasRunway(T2) -> 7505].
+msy[hasAirportName -> "New Orleans L. Armstrong"^^\string].
+msy[hasElevation -> 3].
+msy[hasLattitude -> 29.9934005737305].
+msy[hasLongitude -> -90.2580032348633].
+msy[hasRunway(T0) -> 10104].
+msy[hasRunway(T1) -> 9604].
+ewr[hasAirportName -> "Newark, Liberty"^^\string].
+ewr[hasElevation -> 17].
+ewr[hasLattitude -> 40.6925010681152].
+ewr[hasLongitude -> -74.168701171875].
+ewr[hasRunway(T0) -> 11000].
+ewr[hasRunway(T1) -> 10500].
+ewr[hasRunway(T2) -> 10000].
+cid[hasAirportName -> "The Eastern Iowa Airport"^^\string].
+cid[hasElevation -> 869].
+cid[hasLattitude -> 41.8847007751465].
+cid[hasLongitude -> -91.7108001708984].
+cid[hasRunway(T0) -> 8600].
+cid[hasRunway(T1) -> 8100].
+hnl[hasAirportName -> "Honolulu International Airport"^^\string].
+hnl[hasElevation -> 13].
+hnl[hasLattitude -> 21.3187007904053].
+hnl[hasLongitude -> -157.921997070312].
+hnl[hasRunway(T0) -> 12312].
+hnl[hasRunway(T1) -> 11812].
+hnl[hasRunway(T2) -> 11312].
+hnl[hasRunway(T3) -> 10812].
+hou[hasAirportName -> "Houston Hobby"^^\string].
+hou[hasElevation -> 46].
+hou[hasLattitude -> 29.64539909].
+hou[hasLongitude -> -95.27890015].
+hou[hasRunway(T0) -> 7602].
+hou[hasRunway(T1) -> 7102].
+hou[hasRunway(T2) -> 6602].
+hou[hasRunway(T3) -> 6102].
+elp[hasAirportName -> "El Paso International Airport"^^\string].
+elp[hasElevation -> 3961].
+elp[hasLattitude -> 31.80719948].
+elp[hasLongitude -> -106.3779984].
+elp[hasRunway(T0) -> 12020].
+elp[hasRunway(T1) -> 11520].
+elp[hasRunway(T2) -> 11020].
+sju[hasAirportName -> "Puerto Rico, Luis Munoz International Airport"^^\string].
+sju[hasElevation -> 9].
+sju[hasLattitude -> 18.4393997192].
+sju[hasLongitude -> -66.0018005371].
+sju[hasRunway(T0) -> 10400].
+sju[hasRunway(T1) -> 9900].
+cle[hasAirportName -> "Cleveland, Hopkins International Airport"^^\string].
+cle[hasElevation -> 799].
+cle[hasLattitude -> 41.4117012024].
+cle[hasLongitude -> -81.8498001099].
+cle[hasRunway(T0) -> 9956].
+cle[hasRunway(T1) -> 9456].
+cle[hasRunway(T2) -> 8956].
+oak[hasAirportName -> "Oakland"^^\string].
+oak[hasElevation -> 9].
+oak[hasLattitude -> 37.7212982177734].
+oak[hasLongitude -> -122.221000671387].
+oak[hasRunway(T0) -> 10520].
+oak[hasRunway(T1) -> 10020].
+oak[hasRunway(T2) -> 9520].
+oak[hasRunway(T3) -> 9020].
+tus[hasAirportName -> "Tucson International Airport"^^\string].
+tus[hasElevation -> 2643].
+tus[hasLattitude -> 32.1161003112793].
+tus[hasLongitude -> -110.94100189209].
+tus[hasRunway(T0) -> 10996].
+tus[hasRunway(T1) -> 10496].
+tus[hasRunway(T2) -> 9996].
+saf[hasAirportName -> "Santa Fe"^^\string].
+saf[hasElevation -> 6348].
+saf[hasLattitude -> 35.617099762].
+saf[hasLongitude -> -106.088996887].
+saf[hasRunway(T0) -> 8366].
+saf[hasRunway(T1) -> 7866].
+saf[hasRunway(T2) -> 7366].
+phl[hasAirportName -> "Philadelphia International Airport"^^\string].
+phl[hasElevation -> 36].
+phl[hasLattitude -> 39.871898651123].
+phl[hasLongitude -> -75.241096496582].
+phl[hasRunway(T0) -> 10506].
+phl[hasRunway(T1) -> 10006].
+phl[hasRunway(T2) -> 9506].
+phl[hasRunway(T3) -> 9006].
+dtw[hasAirportName -> "Detroit Metropolitan, Wayne County"^^\string].
+dtw[hasElevation -> 645].
+dtw[hasLattitude -> 42.2123985290527].
+dtw[hasLongitude -> -83.353401184082].
+dtw[hasRunway(T0) -> 12003].
+dtw[hasRunway(T1) -> 11503].
+dtw[hasRunway(T2) -> 11003].
+dtw[hasRunway(T3) -> 10503].
+dtw[hasRunway(T4) -> 10003].
+dtw[hasRunway(T5) -> 9503].
+yyz[hasAirportName -> "Toronto Pearson International Airport"^^\string].
+yyz[hasElevation -> 569].
+yyz[hasLattitude -> 43.6772003174].
+yyz[hasLongitude -> -79.6305999756].
+yyz[hasRunway(T0) -> 11120].
+yyz[hasRunway(T1) -> 10620].
+yyz[hasRunway(T2) -> 10120].
+yyz[hasRunway(T3) -> 9620].
+yyz[hasRunway(T4) -> 9120].
+yvr[hasAirportName -> "Vancouver International Airport"^^\string].
+yvr[hasElevation -> 14].
+yvr[hasLattitude -> 49.193901062].
+yvr[hasLongitude -> -123.183998108].
+yvr[hasRunway(T0) -> 11500].
+yvr[hasRunway(T1) -> 11000].
+yvr[hasRunway(T2) -> 10500].
+lhr[hasAirportName -> "London Heathrow"^^\string].
+lhr[hasElevation -> 83].
+lhr[hasLattitude -> 51.4706001282].
+lhr[hasLongitude -> -0.461941003799].
+lhr[hasRunway(T0) -> 12799].
+lhr[hasRunway(T1) -> 12299].
+lgw[hasAirportName -> "London Gatwick"^^\string].
+lgw[hasElevation -> 202].
+lgw[hasLattitude -> 51.1481018066406].
+lgw[hasLongitude -> -0.190277993679047].
+lgw[hasRunway(T0) -> 10364].
+lgw[hasRunway(T1) -> 9864].
+cdg[hasAirportName -> "Paris Charles de Gaulle"^^\string].
+cdg[hasElevation -> 392].
+cdg[hasLattitude -> 49.0127983093].
+cdg[hasLongitude -> 2.54999995232].
+cdg[hasRunway(T0) -> 13829].
+cdg[hasRunway(T1) -> 13329].
+cdg[hasRunway(T2) -> 12829].
+cdg[hasRunway(T3) -> 12329].
+fra[hasAirportName -> "Frankfurt am Main"^^\string].
+fra[hasElevation -> 364].
+fra[hasLattitude -> 50.0264015198].
+fra[hasLongitude -> 8.54312992096].
+fra[hasRunway(T0) -> 13123].
+fra[hasRunway(T1) -> 12623].
+fra[hasRunway(T2) -> 12123].
+fra[hasRunway(T3) -> 11623].
+hel[hasAirportName -> "Helsinki Ventaa"^^\string].
+hel[hasElevation -> 179].
+hel[hasLattitude -> 60.3171997070312].
+hel[hasLongitude -> 24.9633007049561].
+hel[hasRunway(T0) -> 11286].
+hel[hasRunway(T1) -> 10786].
+hel[hasRunway(T2) -> 10286].
+nrt[hasAirportName -> "Tokyo Narita"^^\string].
+nrt[hasElevation -> 141].
+nrt[hasLattitude -> 35.7647018433].
+nrt[hasLongitude -> 140.386001587].
+nrt[hasRunway(T0) -> 13123].
+nrt[hasRunway(T1) -> 12623].
+syd[hasAirportName -> "Sydney Kingsford Smith"^^\string].
+syd[hasElevation -> 21].
+syd[hasLattitude -> -33.9460983276367].
+syd[hasLongitude -> 151.177001953125].
+syd[hasRunway(T0) -> 12999].
+syd[hasRunway(T1) -> 12499].
+syd[hasRunway(T2) -> 11999].
+sin[hasAirportName -> "Singapore, Changi International Airport"^^\string].
+sin[hasElevation -> 22].
+sin[hasLattitude -> 1.3501900434494].
+sin[hasLongitude -> 103.994003295898].
+sin[hasRunway(T0) -> 13123].
+sin[hasRunway(T1) -> 12623].
+sin[hasRunway(T2) -> 12123].
+mel[hasAirportName -> "Melbourne International Airport"^^\string].
+mel[hasElevation -> 434].
+mel[hasLattitude -> -37.6733016967773].
+mel[hasLongitude -> 144.843002319336].
+mel[hasRunway(T0) -> 11998].
+mel[hasRunway(T1) -> 11498].
+dxb[hasAirportName -> "Dubai International Airport"^^\string].
+dxb[hasElevation -> 62].
+dxb[hasLattitude -> 25.2527999878].
+dxb[hasLongitude -> 55.3643989563].
+dxb[hasRunway(T0) -> 13124].
+dxb[hasRunway(T1) -> 12624].
+del[hasAirportName -> "Indira Gandhi International Airport"^^\string].
+del[hasElevation -> 777].
+del[hasLattitude -> 28.566499710083].
+del[hasLongitude -> 77.1031036376953].
+del[hasRunway(T0) -> 14534].
+del[hasRunway(T1) -> 14034].
+del[hasRunway(T2) -> 13534].
+dub[hasAirportName -> "Dublin International Airport"^^\string].
+dub[hasElevation -> 242].
+dub[hasLattitude -> 53.4212989807129].
+dub[hasLongitude -> -6.27007007598877].
+dub[hasRunway(T0) -> 8652].
+dub[hasRunway(T1) -> 8152].
+hkg[hasAirportName -> "Hong Kong - Chek Lap Kok International Airport"^^\string].
+hkg[hasElevation -> 28].
+hkg[hasLattitude -> 22.3089008331].
+hkg[hasLongitude -> 113.915000916].
+hkg[hasRunway(T0) -> 12467].
+hkg[hasRunway(T1) -> 11967].
+per[hasAirportName -> "Perth International Airport"^^\string].
+per[hasElevation -> 67].
+per[hasLattitude -> -31.940299987793].
+per[hasLongitude -> 115.967002868652].
+per[hasRunway(T0) -> 11299].
+per[hasRunway(T1) -> 10799].
+akl[hasAirportName -> "Auckland International Airport"^^\string].
+akl[hasElevation -> 23].
+akl[hasLattitude -> -37.0080986023].
+akl[hasLongitude -> 174.792007446].
+akl[hasRunway(T0) -> 11926].
+akl[hasRunway(T1) -> 11426].
+pek[hasAirportName -> "Beijing Capital International Airport"^^\string].
+pek[hasElevation -> 116].
+pek[hasLattitude -> 40.0801010131836].
+pek[hasLongitude -> 116.584999084473].
+pek[hasRunway(T0) -> 12468].
+pek[hasRunway(T1) -> 11968].
+pek[hasRunway(T2) -> 11468].
+wlg[hasAirportName -> "Wellington International Airport"^^\string].
+wlg[hasElevation -> 41].
+wlg[hasLattitude -> -41.3272018433].
+wlg[hasLongitude -> 174.804992676].
+wlg[hasRunway(T0) -> 6352].
+bne[hasAirportName -> "Brisbane International Airport"^^\string].
+bne[hasElevation -> 13].
+bne[hasLattitude -> -27.3841991424561].
+bne[hasLongitude -> 153.117004394531].
+bne[hasRunway(T0) -> 11680].
+bne[hasRunway(T1) -> 11180].
+pvg[hasAirportName -> "Shanghai - Pudong International Airport"^^\string].
+pvg[hasElevation -> 13].
+pvg[hasLattitude -> 31.1434001922607].
+pvg[hasLongitude -> 121.805000305176].
+pvg[hasRunway(T0) -> 13123].
+pvg[hasRunway(T1) -> 12623].
+fco[hasAirportName -> "Leonardo da Vinci-Fiumicino International Airport"^^\string].
+fco[hasElevation -> 15].
+fco[hasLattitude -> 41.8045005798].
+fco[hasLongitude -> 12.2508001328].
+fco[hasRunway(T0) -> 12795].
+fco[hasRunway(T1) -> 12295].
+fco[hasRunway(T2) -> 11795].
+bom[hasAirportName -> "Mumbai, Chhatrapati Shivaji International Airport"^^\string].
+bom[hasElevation -> 39].
+bom[hasLattitude -> 19.0886993408].
+bom[hasLongitude -> 72.8678970337].
+bom[hasRunway(T0) -> 11302].
+bom[hasRunway(T1) -> 10802].
+ams[hasAirportName -> "Amsterdam Airport Schiphol"^^\string].
+ams[hasElevation -> -11].
+ams[hasLattitude -> 52.3086013794].
+ams[hasLongitude -> 4.76388978958].
+ams[hasRunway(T0) -> 12467].
+ams[hasRunway(T1) -> 11967].
+ams[hasRunway(T2) -> 11467].
+ams[hasRunway(T3) -> 10967].
+ams[hasRunway(T4) -> 10467].
+ams[hasRunway(T5) -> 9967].
+kul[hasAirportName -> "Kuala Lumpur International Airport"^^\string].
+kul[hasElevation -> 69].
+kul[hasLattitude -> 2.74557995796204].
+kul[hasLongitude -> 101.709999084473].
+kul[hasRunway(T0) -> 13288].
+kul[hasRunway(T1) -> 12788].
+kul[hasRunway(T2) -> 12288].
+prg[hasAirportName -> "Prague, Ruzyne International Airport"^^\string].
+prg[hasElevation -> 1247].
+prg[hasLattitude -> 50.1007995605469].
+prg[hasLongitude -> 14.2600002288818].
+prg[hasRunway(T0) -> 12189].
+prg[hasRunway(T1) -> 11689].
+bcn[hasAirportName -> "Barcelona International Airport"^^\string].
+bcn[hasElevation -> 12].
+bcn[hasLattitude -> 41.2971000671387].
+bcn[hasLongitude -> 2.07845997810364].
+bcn[hasRunway(T0) -> 11654].
+bcn[hasRunway(T1) -> 11154].
+bcn[hasRunway(T2) -> 10654].
+mad[hasAirportName -> "Adolfo Suarez Barajas Airport International Airport"^^\string].
+mad[hasElevation -> 1998].
+mad[hasLattitude -> 40.4936].
+mad[hasLongitude -> -3.56676].
+mad[hasRunway(T0) -> 13711].
+mad[hasRunway(T1) -> 13211].
+mad[hasRunway(T2) -> 12711].
+vie[hasAirportName -> "Vienna International Airport"^^\string].
+vie[hasElevation -> 600].
+vie[hasLattitude -> 48.1102981567383].
+vie[hasLongitude -> 16.5697002410889].
+vie[hasRunway(T0) -> 11811].
+vie[hasRunway(T1) -> 11311].
+zrh[hasAirportName -> "Zurich-Kloten Airport"^^\string].
+zrh[hasElevation -> 1416].
+zrh[hasLattitude -> 47.4646987915039].
+zrh[hasLongitude -> 8.54916954040527].
+zrh[hasRunway(T0) -> 12139].
+zrh[hasRunway(T1) -> 11639].
+zrh[hasRunway(T2) -> 11139].
+gva[hasAirportName -> "Geneva-Cointrin International Airport"^^\string].
+gva[hasElevation -> 1411].
+gva[hasLattitude -> 46.2380981445312].
+gva[hasLongitude -> 6.10895013809204].
+gva[hasRunway(T0) -> 12795].
+gva[hasRunway(T1) -> 12295].
+yow[hasAirportName -> "Ottawa Macdonald-Cartier International Airport"^^\string].
+yow[hasElevation -> 374].
+yow[hasLattitude -> 45.3224983215].
+yow[hasLongitude -> -75.6691970825].
+yow[hasRunway(T0) -> 10000].
+yow[hasRunway(T1) -> 9500].
+yow[hasRunway(T2) -> 9000].
+bru[hasAirportName -> "Brussels Airport"^^\string].
+bru[hasElevation -> 184].
+bru[hasLattitude -> 50.9014015198].
+bru[hasLongitude -> 4.48443984985].
+bru[hasRunway(T0) -> 11936].
+bru[hasRunway(T1) -> 11436].
+bru[hasRunway(T2) -> 10936].
+muc[hasAirportName -> "Munich International Airport"^^\string].
+muc[hasElevation -> 1487].
+muc[hasLattitude -> 48.3538017272949].
+muc[hasLongitude -> 11.7861003875732].
+muc[hasRunway(T0) -> 13123].
+muc[hasRunway(T1) -> 12623].
+chc[hasAirportName -> "Christchurch International Airport"^^\string].
+chc[hasElevation -> 123].
+chc[hasLattitude -> -43.4893989562988].
+chc[hasLongitude -> 172.531997680664].
+chc[hasRunway(T0) -> 10787].
+chc[hasRunway(T1) -> 10287].
+chc[hasRunway(T2) -> 9787].
+cbr[hasAirportName -> "Canberra International Airport"^^\string].
+cbr[hasElevation -> 1886].
+cbr[hasLattitude -> -35.3069000244141].
+cbr[hasLongitude -> 149.195007324219].
+cbr[hasRunway(T0) -> 10771].
+cbr[hasRunway(T1) -> 10271].
+rsw[hasAirportName -> "Southwest Florida International Airport"^^\string].
+rsw[hasElevation -> 30].
+rsw[hasLattitude -> 26.5361995697021].
+rsw[hasLongitude -> -81.7552032470703].
+rsw[hasRunway(T0) -> 12000].
+man[hasAirportName -> "Manchester Airport"^^\string].
+man[hasElevation -> 257].
+man[hasLattitude -> 53.3536987304688].
+man[hasLongitude -> -2.27495002746582].
+man[hasRunway(T0) -> 10000].
+man[hasRunway(T1) -> 9500].
+yul[hasAirportName -> "Montreal / Pierre Elliott Trudeau International Airport"^^\string].
+yul[hasElevation -> 118].
+yul[hasLattitude -> 45.4706001282].
+yul[hasLongitude -> -73.7407989502].
+yul[hasRunway(T0) -> 11000].
+yul[hasRunway(T1) -> 10500].
+yul[hasRunway(T2) -> 10000].
+yeg[hasAirportName -> "Edmonton International Airport"^^\string].
+yeg[hasElevation -> 2373].
+yeg[hasLattitude -> 53.3097000122].
+yeg[hasLongitude -> -113.580001831].
+yeg[hasRunway(T0) -> 11000].
+yeg[hasRunway(T1) -> 10500].
+cgn[hasAirportName -> "Cologne Bonn Airport"^^\string].
+cgn[hasElevation -> 302].
+cgn[hasLattitude -> 50.8658981323].
+cgn[hasLongitude -> 7.1427397728].
+cgn[hasRunway(T0) -> 12516].
+cgn[hasRunway(T1) -> 12016].
+cgn[hasRunway(T2) -> 11516].
+lcy[hasAirportName -> "London City Airport"^^\string].
+lcy[hasElevation -> 19].
+lcy[hasLattitude -> 51.505278].
+lcy[hasLongitude -> 0.055278].
+lcy[hasRunway(T0) -> 4948].
+got[hasAirportName -> "Gothenburg-Landvetter Airport"^^\string].
+got[hasElevation -> 506].
+got[hasLattitude -> 57.6627998352051].
+got[hasLongitude -> 12.2798004150391].
+got[hasRunway(T0) -> 10823].
+vce[hasAirportName -> "Venice Marco Polo Airport"^^\string].
+vce[hasElevation -> 7].
+vce[hasLattitude -> 45.5052986145].
+vce[hasLongitude -> 12.3519001007].
+vce[hasRunway(T0) -> 10827].
+vce[hasRunway(T1) -> 10327].
+snn[hasAirportName -> "Shannon Airport"^^\string].
+snn[hasElevation -> 46].
+snn[hasLattitude -> 52.7019996643066].
+snn[hasLongitude -> -8.92481994628906].
+snn[hasRunway(T0) -> 10495].
+snn[hasRunway(T1) -> 9995].
+snn[hasRunway(T2) -> 9495].
+snn[hasRunway(T3) -> 8995].
+snn[hasRunway(T4) -> 8495].
+osl[hasAirportName -> "Oslo Gardermoen Airport"^^\string].
+osl[hasElevation -> 681].
+osl[hasLattitude -> 60.1939010620117].
+osl[hasLongitude -> 11.1003999710083].
+osl[hasRunway(T0) -> 11811].
+osl[hasRunway(T1) -> 11311].
+arn[hasAirportName -> "Stockholm-Arlanda Airport"^^\string].
+arn[hasElevation -> 137].
+arn[hasLattitude -> 59.6519012451172].
+arn[hasLongitude -> 17.9186000823975].
+arn[hasRunway(T0) -> 10830].
+arn[hasRunway(T1) -> 10330].
+arn[hasRunway(T2) -> 9830].
+stn[hasAirportName -> "London Stansted Airport"^^\string].
+stn[hasElevation -> 348].
+stn[hasLattitude -> 51.8849983215].
+stn[hasLongitude -> 0.234999999404].
+stn[hasRunway(T0) -> 10003].
+ema[hasAirportName -> "East Midlands Airport"^^\string].
+ema[hasElevation -> 306].
+ema[hasLattitude -> 52.8311004639].
+ema[hasLongitude -> -1.32806003094].
+ema[hasRunway(T0) -> 9491].
+edi[hasAirportName -> "Edinburgh Airport"^^\string].
+edi[hasElevation -> 135].
+edi[hasLattitude -> 55.9500007629395].
+edi[hasLongitude -> -3.37249994277954].
+edi[hasRunway(T0) -> 8400].
+edi[hasRunway(T1) -> 7900].
+edi[hasRunway(T2) -> 7400].
+gla[hasAirportName -> "Glasgow International Airport"^^\string].
+gla[hasElevation -> 26].
+gla[hasLattitude -> 55.8718986511].
+gla[hasLongitude -> -4.43306016922].
+gla[hasRunway(T0) -> 8720].
+gla[hasRunway(T1) -> 8220].
+lpl[hasAirportName -> "Liverpool John Lennon Airport"^^\string].
+lpl[hasElevation -> 80].
+lpl[hasLattitude -> 53.3335990905762].
+lpl[hasLongitude -> -2.8497200012207].
+lpl[hasRunway(T0) -> 7500].
+yyc[hasAirportName -> "Calgary International Airport"^^\string].
+yyc[hasElevation -> 3557].
+yyc[hasLattitude -> 51.113899231].
+yyc[hasLongitude -> -114.019996643].
+yyc[hasRunway(T0) -> 12675].
+yyc[hasRunway(T1) -> 12175].
+yyc[hasRunway(T2) -> 11675].
+mnl[hasAirportName -> "Manila, Ninoy Aquino International Airport"^^\string].
+mnl[hasElevation -> 75].
+mnl[hasLattitude -> 14.508600235].
+mnl[hasLongitude -> 121.019996643].
+mnl[hasRunway(T0) -> 12261].
+mnl[hasRunway(T1) -> 11761].
+bkk[hasAirportName -> "Suvarnabhumi Bangkok International Airport"^^\string].
+bkk[hasElevation -> 5].
+bkk[hasLattitude -> 13.6810998916626].
+bkk[hasLongitude -> 100.747001647949].
+bkk[hasRunway(T0) -> 13123].
+bkk[hasRunway(T1) -> 12623].
+dme[hasAirportName -> "Moscow, Domodedovo International Airport"^^\string].
+dme[hasElevation -> 588].
+dme[hasLattitude -> 55.4087982177734].
+dme[hasLongitude -> 37.9062995910645].
+dme[hasRunway(T0) -> 12448].
+dme[hasRunway(T1) -> 11948].
+dme[hasRunway(T2) -> 11448].
+svo[hasAirportName -> "Moscow, Sheremetyevo International Airport"^^\string].
+svo[hasElevation -> 622].
+svo[hasLattitude -> 55.972599029541].
+svo[hasLongitude -> 37.4146003723145].
+svo[hasRunway(T0) -> 12139].
+svo[hasRunway(T1) -> 11639].
+itm[hasAirportName -> "Osaka International Airport"^^\string].
+itm[hasElevation -> 50].
+itm[hasLattitude -> 34.7854995727539].
+itm[hasLongitude -> 135.438003540039].
+itm[hasRunway(T0) -> 9840].
+itm[hasRunway(T1) -> 9340].
+hnd[hasAirportName -> "Tokyo Haneda International Airport"^^\string].
+hnd[hasElevation -> 35].
+hnd[hasLattitude -> 35.5522994995117].
+hnd[hasLongitude -> 139.779998779297].
+hnd[hasRunway(T0) -> 9840].
+hnd[hasRunway(T1) -> 9340].
+hnd[hasRunway(T2) -> 8840].
+hnd[hasRunway(T3) -> 8340].
+doh[hasAirportName -> "Doha, Hamad International Airport"^^\string].
+doh[hasElevation -> 13].
+doh[hasLattitude -> 25.273056].
+doh[hasLongitude -> 51.608056].
+doh[hasRunway(T0) -> 15912].
+doh[hasRunway(T1) -> 15412].
+ory[hasAirportName -> "Paris, Orly Airport"^^\string].
+ory[hasElevation -> 291].
+ory[hasLattitude -> 48.7252998352].
+ory[hasLongitude -> 2.35944008827].
+ory[hasRunway(T0) -> 11975].
+ory[hasRunway(T1) -> 11475].
+ory[hasRunway(T2) -> 10975].
+nce[hasAirportName -> "Nice-Cote d'Azur Airport"^^\string].
+nce[hasElevation -> 12].
+nce[hasLattitude -> 43.6584014893].
+nce[hasLongitude -> 7.21586990356].
+nce[hasRunway(T0) -> 9712].
+nce[hasRunway(T1) -> 9212].
+mxp[hasAirportName -> "Milan, Malpensa International Airport"^^\string].
+mxp[hasElevation -> 768].
+mxp[hasLattitude -> 45.6305999756].
+mxp[hasLongitude -> 8.72811031342].
+mxp[hasRunway(T0) -> 12861].
+mxp[hasRunway(T1) -> 12361].
+ath[hasAirportName -> "Athens, Eleftherios Venizelos International Airport"^^\string].
+ath[hasElevation -> 308].
+ath[hasLattitude -> 37.9364013672].
+ath[hasLongitude -> 23.9444999695].
+ath[hasRunway(T0) -> 13123].
+ath[hasRunway(T1) -> 12623].
+zag[hasAirportName -> "Zagreb Airport"^^\string].
+zag[hasElevation -> 353].
+zag[hasLattitude -> 45.7429008484].
+zag[hasLongitude -> 16.0687999725].
+zag[hasRunway(T0) -> 10669].
+bud[hasAirportName -> "Budapest Ferenc Liszt International Airport"^^\string].
+bud[hasElevation -> 495].
+bud[hasLattitude -> 47.4369010925].
+bud[hasLongitude -> 19.2555999756].
+bud[hasRunway(T0) -> 12162].
+bud[hasRunway(T1) -> 11662].
+alc[hasAirportName -> "Alicante International Airport"^^\string].
+alc[hasElevation -> 142].
+alc[hasLattitude -> 38.2821998596191].
+alc[hasLongitude -> -0.55815601348877].
+alc[hasRunway(T0) -> 9842].
+bio[hasAirportName -> "Bilbao Airport"^^\string].
+bio[hasElevation -> 138].
+bio[hasLattitude -> 43.3011016845703].
+bio[hasLongitude -> -2.91060996055603].
+bio[hasRunway(T0) -> 8530].
+bio[hasRunway(T1) -> 8030].
+ibz[hasAirportName -> "Ibiza Airport"^^\string].
+ibz[hasElevation -> 24].
+ibz[hasLattitude -> 38.8728981018].
+ibz[hasLongitude -> 1.37311995029].
+ibz[hasRunway(T0) -> 9186].
+mah[hasAirportName -> "Menorca Airport"^^\string].
+mah[hasElevation -> 302].
+mah[hasLattitude -> 39.8625984191895].
+mah[hasLongitude -> 4.21864986419678].
+mah[hasRunway(T0) -> 7710].
+mah[hasRunway(T1) -> 7210].
+ccj[hasAirportName -> "Calicut International Airport"^^\string].
+ccj[hasElevation -> 342].
+ccj[hasLattitude -> 11.1367998123].
+ccj[hasLongitude -> 75.9552993774].
+ccj[hasRunway(T0) -> 9383].
+hyd[hasAirportName -> "Hyderabad, Rajiv Gandhi International Airport"^^\string].
+hyd[hasElevation -> 2024].
+hyd[hasLattitude -> 17.2313175201].
+hyd[hasLongitude -> 78.4298553467].
+hyd[hasRunway(T0) -> 13976].
+maa[hasAirportName -> "Chennai International Airport"^^\string].
+maa[hasElevation -> 52].
+maa[hasLattitude -> 12.9900054931641].
+maa[hasLongitude -> 80.1692962646484].
+maa[hasRunway(T0) -> 12001].
+maa[hasRunway(T1) -> 11501].
+ccu[hasAirportName -> "Kolkata, Netaji Subhash Chandra Bose International Airport"^^\string].
+ccu[hasElevation -> 16].
+ccu[hasLattitude -> 22.6546993255615].
+ccu[hasLongitude -> 88.4467010498047].
+ccu[hasRunway(T0) -> 11900].
+ccu[hasRunway(T1) -> 11400].
+blr[hasAirportName -> "Bengaluru International Airport"^^\string].
+blr[hasElevation -> 3000].
+blr[hasLattitude -> 13.1978998184].
+blr[hasLongitude -> 77.7062988281].
+blr[hasRunway(T0) -> 13123].
+icn[hasAirportName -> "Seoul, Incheon International Airport"^^\string].
+icn[hasElevation -> 23].
+icn[hasLattitude -> 37.4691009521484].
+icn[hasLongitude -> 126.450996398926].
+icn[hasRunway(T0) -> 13000].
+icn[hasRunway(T1) -> 12500].
+icn[hasRunway(T2) -> 12000].
+yyt[hasAirportName -> "St. John's International Airport"^^\string].
+yyt[hasElevation -> 461].
+yyt[hasLattitude -> 47.618598938].
+yyt[hasLongitude -> -52.7518997192].
+yyt[hasRunway(T0) -> 8502].
+yyt[hasRunway(T1) -> 8002].
+yyt[hasRunway(T2) -> 7502].
+tfn[hasAirportName -> "Tenerife Norte Airport"^^\string].
+tfn[hasElevation -> 2076].
+tfn[hasLattitude -> 28.4827003479].
+tfn[hasLongitude -> -16.3414993286].
+tfn[hasRunway(T0) -> 11155].
+cpt[hasAirportName -> "Cape Town International Airport"^^\string].
+cpt[hasElevation -> 151].
+cpt[hasLattitude -> -33.9648017883].
+cpt[hasLongitude -> 18.6016998291].
+cpt[hasRunway(T0) -> 10502].
+cpt[hasRunway(T1) -> 10002].
+jnb[hasAirportName -> "Johannesburg, OR Tambo International Airport"^^\string].
+jnb[hasElevation -> 5558].
+jnb[hasLattitude -> -26.1392002106].
+jnb[hasLongitude -> 28.2460002899].
+jnb[hasRunway(T0) -> 14495].
+jnb[hasRunway(T1) -> 13995].
+dur[hasAirportName -> "Durban, King Shaka International Airport"^^\string].
+dur[hasElevation -> 295].
+dur[hasLattitude -> -29.6144444444].
+dur[hasLongitude -> 31.1197222222].
+dur[hasRunway(T0) -> 12139].
+nbo[hasAirportName -> "Nairobi, Jomo Kenyatta International Airport"^^\string].
+nbo[hasElevation -> 5330].
+nbo[hasLattitude -> -1.31923997402].
+nbo[hasLongitude -> 36.9277992249].
+nbo[hasRunway(T0) -> 13507].
+mba[hasAirportName -> "Mombasa Moi International Airport"^^\string].
+mba[hasElevation -> 200].
+mba[hasLattitude -> -4.03483009338379].
+mba[hasLongitude -> 39.5942001342773].
+mba[hasRunway(T0) -> 10991].
+mba[hasRunway(T1) -> 10491].
+mvd[hasAirportName -> "Montevideo, Carrasco International /General C L Berisso Airport"^^\string].
+mvd[hasElevation -> 105].
+mvd[hasLattitude -> -34.8384017944336].
+mvd[hasLongitude -> -56.0307998657227].
+mvd[hasRunway(T0) -> 10499].
+mvd[hasRunway(T1) -> 9999].
+mvd[hasRunway(T2) -> 9499].
+gig[hasAirportName -> "Rio de Janeiro ,Galeao Antonio Carlos Jobim International Airport"^^\string].
+gig[hasElevation -> 28].
+gig[hasLattitude -> -22.8099994659].
+gig[hasLongitude -> -43.2505569458].
+gig[hasRunway(T0) -> 13123].
+gig[hasRunway(T1) -> 12623].
+gru[hasAirportName -> "Sao Paulo, Guarulhos - Governador Andras Franco Montoro International Airport"^^\string].
+gru[hasElevation -> 2459].
+gru[hasLattitude -> -23.4355564117432].
+gru[hasLongitude -> -46.4730567932129].
+gru[hasRunway(T0) -> 12139].
+eze[hasAirportName -> "Buenos Aires, Ministro Pistarini International Airport"^^\string].
+eze[hasElevation -> 67].
+eze[hasLattitude -> -34.8222].
+eze[hasLongitude -> -58.5358].
+eze[hasRunway(T0) -> 10187].
+eze[hasRunway(T1) -> 9687].
+lim[hasAirportName -> "Lima, Jorge Chavez International Airport"^^\string].
+lim[hasElevation -> 113].
+lim[hasLattitude -> -12.021900177].
+lim[hasLongitude -> -77.1143035889].
+lim[hasRunway(T0) -> 11506].
+scl[hasAirportName -> "Santiago, Comodoro Arturo Merino Benitez International Airport"^^\string].
+scl[hasElevation -> 1555].
+scl[hasLattitude -> -33.3930015563965].
+scl[hasLongitude -> -70.7857971191406].
+scl[hasRunway(T0) -> 12203].
+scl[hasRunway(T1) -> 11703].
+mex[hasAirportName -> "Mexico City, Licenciado Benito Juarez International Airport"^^\string].
+mex[hasElevation -> 7316].
+mex[hasLattitude -> 19.43630027771].
+mex[hasLongitude -> -99.0720977783203].
+mex[hasRunway(T0) -> 12966].
+mex[hasRunway(T1) -> 12466].
+kin[hasAirportName -> "Kingston, Norman Manley International Airport"^^\string].
+kin[hasElevation -> 10].
+kin[hasLattitude -> 17.9356994628906].
+kin[hasLongitude -> -76.7874984741211].
+kin[hasRunway(T0) -> 8900].
+tlh[hasAirportName -> "Tallahassee Regional Airport"^^\string].
+tlh[hasElevation -> 81].
+tlh[hasLattitude -> 30.3964996337891].
+tlh[hasLongitude -> -84.3503036499023].
+tlh[hasRunway(T0) -> 8000].
+tlh[hasRunway(T1) -> 7500].
+lca[hasAirportName -> "Larnaca International Airport"^^\string].
+lca[hasElevation -> 8].
+lca[hasLattitude -> 34.8750991821289].
+lca[hasLongitude -> 33.6249008178711].
+lca[hasRunway(T0) -> 9776].
+waw[hasAirportName -> "Warsaw Chopin Airport"^^\string].
+waw[hasElevation -> 362].
+waw[hasLattitude -> 52.1656990051].
+waw[hasLongitude -> 20.9671001434].
+waw[hasRunway(T0) -> 12106].
+waw[hasRunway(T1) -> 11606].
+mla[hasAirportName -> "Malta International Airport"^^\string].
+mla[hasElevation -> 300].
+mla[hasLattitude -> 35.857498].
+mla[hasLongitude -> 14.4775].
+mla[hasRunway(T0) -> 11627].
+mla[hasRunway(T1) -> 11127].
+sof[hasAirportName -> "Sofia Airport"^^\string].
+sof[hasElevation -> 1742].
+sof[hasLattitude -> 42.6966934204102].
+sof[hasLongitude -> 23.4114360809326].
+sof[hasRunway(T0) -> 9186].
+beg[hasAirportName -> "Belgrade Nikola Tesla Airport"^^\string].
+beg[hasElevation -> 335].
+beg[hasLattitude -> 44.8184013367].
+beg[hasLongitude -> 20.3090991974].
+beg[hasRunway(T0) -> 11155].
+cai[hasAirportName -> "Cairo International Airport"^^\string].
+cai[hasElevation -> 382].
+cai[hasLattitude -> 30.1219005584717].
+cai[hasLongitude -> 31.4055995941162].
+cai[hasRunway(T0) -> 13124].
+cai[hasRunway(T1) -> 12624].
+cai[hasRunway(T2) -> 12124].
+add[hasAirportName -> "Addis Ababa Bole International Airport"^^\string].
+add[hasElevation -> 7630].
+add[hasLattitude -> 8.97789001465].
+add[hasLongitude -> 38.7993011475].
+add[hasRunway(T0) -> 12467].
+add[hasRunway(T1) -> 11967].
+tlv[hasAirportName -> "Tel Aviv, Ben Gurion International Airport"^^\string].
+tlv[hasElevation -> 135].
+tlv[hasLattitude -> 32.0113983154297].
+tlv[hasLongitude -> 34.8866996765137].
+tlv[hasRunway(T0) -> 13327].
+tlv[hasRunway(T1) -> 12827].
+tlv[hasRunway(T2) -> 12327].
+pit[hasAirportName -> "Pittsburgh International Airport"^^\string].
+pit[hasElevation -> 1203].
+pit[hasLattitude -> 40.49150085].
+pit[hasLongitude -> -80.23290253].
+pit[hasRunway(T0) -> 11500].
+pit[hasRunway(T1) -> 11000].
+pit[hasRunway(T2) -> 10500].
+pit[hasRunway(T3) -> 10000].
+pwm[hasAirportName -> "Portland International Jetport Airport"^^\string].
+pwm[hasElevation -> 76].
+pwm[hasLattitude -> 43.64619827].
+pwm[hasLongitude -> -70.30930328].
+pwm[hasRunway(T0) -> 7200].
+pwm[hasRunway(T1) -> 6700].
+pdx[hasAirportName -> "Portland International Airport"^^\string].
+pdx[hasElevation -> 31].
+pdx[hasLattitude -> 45.58869934].
+pdx[hasLongitude -> -122.5979996].
+pdx[hasRunway(T0) -> 11000].
+pdx[hasRunway(T1) -> 10500].
+pdx[hasRunway(T2) -> 10000].
+okc[hasAirportName -> "Oaklahoma City, Will Rogers World Airport"^^\string].
+okc[hasElevation -> 1295].
+okc[hasLattitude -> 35.3931007385254].
+okc[hasLongitude -> -97.600700378418].
+okc[hasRunway(T0) -> 9800].
+okc[hasRunway(T1) -> 9300].
+okc[hasRunway(T2) -> 8800].
+okc[hasRunway(T3) -> 8300].
+ont[hasAirportName -> "Ontario International Airport"^^\string].
+ont[hasElevation -> 944].
+ont[hasLattitude -> 34.0559997558594].
+ont[hasLongitude -> -117.600997924805].
+ont[hasRunway(T0) -> 12198].
+ont[hasRunway(T1) -> 11698].
+roc[hasAirportName -> "Greater Rochester International Airport"^^\string].
+roc[hasElevation -> 559].
+roc[hasLattitude -> 43.1189002990723].
+roc[hasLongitude -> -77.6724014282227].
+roc[hasRunway(T0) -> 8001].
+roc[hasRunway(T1) -> 7501].
+roc[hasRunway(T2) -> 7001].
+rst[hasAirportName -> "Rochester International Airport"^^\string].
+rst[hasElevation -> 1317].
+rst[hasLattitude -> 43.9082984924316].
+rst[hasLongitude -> -92.5].
+rst[hasRunway(T0) -> 9033].
+rst[hasRunway(T1) -> 8533].
+kwi[hasAirportName -> "Kuwait International Airport"^^\string].
+kwi[hasElevation -> 206].
+kwi[hasLattitude -> 29.2266006469727].
+kwi[hasLongitude -> 47.9688987731934].
+kwi[hasRunway(T0) -> 11483].
+kwi[hasRunway(T1) -> 10983].
+pnh[hasAirportName -> "Phnom Penh International Airport"^^\string].
+pnh[hasElevation -> 40].
+pnh[hasLattitude -> 11.5466003417969].
+pnh[hasLongitude -> 104.84400177002].
+pnh[hasRunway(T0) -> 9843].
+ayq[hasAirportName -> "Ayers Rock Connellan Airport"^^\string].
+ayq[hasElevation -> 1626].
+ayq[hasLattitude -> -25.1861000061035].
+ayq[hasLongitude -> 130.975997924805].
+ayq[hasRunway(T0) -> 8527].
+asp[hasAirportName -> "Alice Springs Airport"^^\string].
+asp[hasElevation -> 1789].
+asp[hasLattitude -> -23.8066997528076].
+asp[hasLongitude -> 133.901992797852].
+asp[hasRunway(T0) -> 7999].
+asp[hasRunway(T1) -> 7499].
+ool[hasAirportName -> "Gold Coast Airport"^^\string].
+ool[hasElevation -> 21].
+ool[hasLattitude -> -28.1644001007].
+ool[hasLongitude -> 153.505004883].
+ool[hasRunway(T0) -> 6699].
+ool[hasRunway(T1) -> 6199].
+fai[hasAirportName -> "Fairbanks International Airport"^^\string].
+fai[hasElevation -> 439].
+fai[hasLattitude -> 64.81510162].
+fai[hasLongitude -> -147.8560028].
+fai[hasRunway(T0) -> 11800].
+fai[hasRunway(T1) -> 11300].
+fai[hasRunway(T2) -> 10800].
+fai[hasRunway(T3) -> 10300].
+cns[hasAirportName -> "Cairns International Airport"^^\string].
+cns[hasElevation -> 10].
+cns[hasLattitude -> -16.885799408].
+cns[hasLongitude -> 145.755004883].
+cns[hasRunway(T0) -> 10489].
+cns[hasRunway(T1) -> 9989].
+ist[hasAirportName -> "Istanbul International Airport"^^\string].
+ist[hasElevation -> 325].
+ist[hasLattitude -> 41.275278].
+ist[hasLongitude -> 28.751944].
+ist[hasRunway(T0) -> 13451].
+ist[hasRunway(T1) -> 12951].
+ist[hasRunway(T2) -> 12451].
+ist[hasRunway(T3) -> 11951].
+bah[hasAirportName -> "Bahrain International Airport"^^\string].
+bah[hasElevation -> 6].
+bah[hasLattitude -> 26.2707996368408].
+bah[hasLongitude -> 50.6335983276367].
+bah[hasRunway(T0) -> 12979].
+bah[hasRunway(T1) -> 12479].
+yhz[hasAirportName -> "Halifax / Stanfield International Airport"^^\string].
+yhz[hasElevation -> 477].
+yhz[hasLattitude -> 44.8807983398].
+yhz[hasLongitude -> -63.5085983276].
+yhz[hasRunway(T0) -> 10500].
+yhz[hasRunway(T1) -> 10000].
+auh[hasAirportName -> "Abu Dhabi International Airport"^^\string].
+auh[hasElevation -> 88].
+auh[hasLattitude -> 24.4330005645752].
+auh[hasLongitude -> 54.6511001586914].
+auh[hasRunway(T0) -> 13452].
+auh[hasRunway(T1) -> 12952].
+sgn[hasAirportName -> "Ho Chi Minh City, Tan Son Nhat International Airport"^^\string].
+sgn[hasElevation -> 33].
+sgn[hasLattitude -> 10.8187999725].
+sgn[hasLongitude -> 106.652000427].
+sgn[hasRunway(T0) -> 12468].
+sgn[hasRunway(T1) -> 11968].
+ywg[hasAirportName -> "Winnipeg / James Armstrong Richardson International Airport"^^\string].
+ywg[hasElevation -> 783].
+ywg[hasLattitude -> 49.9099998474].
+ywg[hasLongitude -> -97.2398986816].
+ywg[hasRunway(T0) -> 11000].
+ywg[hasRunway(T1) -> 10500].
+ywg[hasRunway(T2) -> 10000].
+ham[hasAirportName -> "Hamburg Airport"^^\string].
+ham[hasElevation -> 53].
+ham[hasLattitude -> 53.6304016113281].
+ham[hasLongitude -> 9.98822975158691].
+ham[hasRunway(T0) -> 12028].
+ham[hasRunway(T1) -> 11528].
+str[hasAirportName -> "Stuttgart Airport"^^\string].
+str[hasElevation -> 1276].
+str[hasLattitude -> 48.6898994446].
+str[hasLongitude -> 9.22196006775].
+str[hasRunway(T0) -> 10974].
+goa[hasAirportName -> "Genoa Cristoforo Colombo Airport"^^\string].
+goa[hasElevation -> 13].
+goa[hasLattitude -> 44.4132995605].
+goa[hasLongitude -> 8.83749961853].
+goa[hasRunway(T0) -> 9564].
+nap[hasAirportName -> "Naples International Airport"^^\string].
+nap[hasElevation -> 294].
+nap[hasLattitude -> 40.8860015869].
+nap[hasLongitude -> 14.2908000946].
+nap[hasRunway(T0) -> 8622].
+psa[hasAirportName -> "Pisa International Airport"^^\string].
+psa[hasElevation -> 6].
+psa[hasLattitude -> 43.6838989258].
+psa[hasLongitude -> 10.3927001953].
+psa[hasRunway(T0) -> 9820].
+psa[hasRunway(T1) -> 9320].
+trn[hasAirportName -> "Turin Airport"^^\string].
+trn[hasElevation -> 989].
+trn[hasLattitude -> 45.2008018494].
+trn[hasLongitude -> 7.64963006973].
+trn[hasRunway(T0) -> 10827].
+blq[hasAirportName -> "Bologna Guglielmo Marconi Airport"^^\string].
+blq[hasElevation -> 123].
+blq[hasLattitude -> 44.5354003906].
+blq[hasLongitude -> 11.2887001038].
+blq[hasRunway(T0) -> 9186].
+tsf[hasAirportName -> "Venice, Treviso-Sant Angelo Airport"^^\string].
+tsf[hasElevation -> 59].
+tsf[hasLattitude -> 45.648399353].
+tsf[hasLongitude -> 12.1943998337].
+tsf[hasRunway(T0) -> 7941].
+vrn[hasAirportName -> "Verona Villafranca Airport"^^\string].
+vrn[hasElevation -> 239].
+vrn[hasLattitude -> 45.3956985474].
+vrn[hasLongitude -> 10.8885002136].
+vrn[hasRunway(T0) -> 10064].
+nte[hasAirportName -> "Nantes Atlantique Airport"^^\string].
+nte[hasElevation -> 90].
+nte[hasLattitude -> 47.1531982422].
+nte[hasLongitude -> -1.61073005199].
+nte[hasRunway(T0) -> 9514].
+cph[hasAirportName -> "Copenhagen Kastrup Airport"^^\string].
+cph[hasElevation -> 17].
+cph[hasLattitude -> 55.6179008483887].
+cph[hasLongitude -> 12.6560001373291].
+cph[hasRunway(T0) -> 11811].
+cph[hasRunway(T1) -> 11311].
+cph[hasRunway(T2) -> 10811].
+clt[hasAirportName -> "Charlotte Douglas International Airport"^^\string].
+clt[hasElevation -> 748].
+clt[hasLattitude -> 35.2140007019043].
+clt[hasLongitude -> -80.9430999755859].
+clt[hasRunway(T0) -> 10000].
+clt[hasRunway(T1) -> 9500].
+clt[hasRunway(T2) -> 9000].
+clt[hasRunway(T3) -> 8500].
+lux[hasAirportName -> "Luxembourg-Findel International Airport"^^\string].
+lux[hasElevation -> 1234].
+lux[hasLattitude -> 49.6265983581543].
+lux[hasLongitude -> 6.21152019500732].
+lux[hasRunway(T0) -> 13123].
+cun[hasAirportName -> "Cancun International Airport"^^\string].
+cun[hasElevation -> 22].
+cun[hasLattitude -> 21.0365009308].
+cun[hasLongitude -> -86.8770980835].
+cun[hasRunway(T0) -> 11483].
+cun[hasRunway(T1) -> 10983].
+psp[hasAirportName -> "Palm Springs International Airport"^^\string].
+psp[hasElevation -> 477].
+psp[hasLattitude -> 33.8297004699707].
+psp[hasLongitude -> -116.50700378418].
+psp[hasRunway(T0) -> 10000].
+psp[hasRunway(T1) -> 9500].
+mem[hasAirportName -> "Memphis International Airport"^^\string].
+mem[hasElevation -> 341].
+mem[hasLattitude -> 35.0424003601074].
+mem[hasLongitude -> -89.9766998291016].
+mem[hasRunway(T0) -> 11120].
+mem[hasRunway(T1) -> 10620].
+mem[hasRunway(T2) -> 10120].
+mem[hasRunway(T3) -> 9620].
+cvg[hasAirportName -> "Cincinnati Northern Kentucky International Airport"^^\string].
+cvg[hasElevation -> 896].
+cvg[hasLattitude -> 39.0488014221].
+cvg[hasLongitude -> -84.6678009033].
+cvg[hasRunway(T0) -> 12000].
+cvg[hasRunway(T1) -> 11500].
+cvg[hasRunway(T2) -> 11000].
+cvg[hasRunway(T3) -> 10500].
+ind[hasAirportName -> "Indianapolis International Airport"^^\string].
+ind[hasElevation -> 797].
+ind[hasLattitude -> 39.7173004150391].
+ind[hasLongitude -> -86.2944030761719].
+ind[hasRunway(T0) -> 11200].
+ind[hasRunway(T1) -> 10700].
+ind[hasRunway(T2) -> 10200].
+mci[hasAirportName -> "Kansas City International Airport"^^\string].
+mci[hasElevation -> 1026].
+mci[hasLattitude -> 39.2975997924805].
+mci[hasLongitude -> -94.7138977050781].
+mci[hasRunway(T0) -> 10801].
+mci[hasRunway(T1) -> 10301].
+mci[hasRunway(T2) -> 9801].
+dal[hasAirportName -> "Dallas Love Field"^^\string].
+dal[hasElevation -> 487].
+dal[hasLattitude -> 32.8470993041992].
+dal[hasLongitude -> -96.8517990112305].
+dal[hasRunway(T0) -> 8800].
+dal[hasRunway(T1) -> 8300].
+dal[hasRunway(T2) -> 7800].
+stl[hasAirportName -> "Lambert St Louis International Airport"^^\string].
+stl[hasElevation -> 618].
+stl[hasLattitude -> 38.7486991882324].
+stl[hasLongitude -> -90.370002746582].
+stl[hasRunway(T0) -> 11019].
+stl[hasRunway(T1) -> 10519].
+stl[hasRunway(T2) -> 10019].
+stl[hasRunway(T3) -> 9519].
+abq[hasAirportName -> "Albuquerque International Sunport Airport"^^\string].
+abq[hasElevation -> 5355].
+abq[hasLattitude -> 35.0401992797852].
+abq[hasLongitude -> -106.609001159668].
+abq[hasRunway(T0) -> 13793].
+abq[hasRunway(T1) -> 13293].
+abq[hasRunway(T2) -> 12793].
+abq[hasRunway(T3) -> 12293].
+mke[hasAirportName -> "General Mitchell International Airport"^^\string].
+mke[hasElevation -> 723].
+mke[hasLattitude -> 42.9472007751465].
+mke[hasLongitude -> -87.896598815918].
+mke[hasRunway(T0) -> 9690].
+mke[hasRunway(T1) -> 9190].
+mke[hasRunway(T2) -> 8690].
+mke[hasRunway(T3) -> 8190].
+mke[hasRunway(T4) -> 7690].
+mdw[hasAirportName -> "Chicago Midway International Airport"^^\string].
+mdw[hasElevation -> 620].
+mdw[hasLattitude -> 41.7859992980957].
+mdw[hasLongitude -> -87.7524032592773].
+mdw[hasRunway(T0) -> 6522].
+mdw[hasRunway(T1) -> 6022].
+mdw[hasRunway(T2) -> 5522].
+mdw[hasRunway(T3) -> 5022].
+mdw[hasRunway(T4) -> 4522].
+hro[hasAirportName -> "Harrison, Boone County Airport"^^\string].
+hro[hasElevation -> 1365].
+hro[hasLattitude -> 36.2615013122559].
+hro[hasLongitude -> -93.1547012329102].
+hro[hasRunway(T0) -> 6161].
+sln[hasAirportName -> "Salina Municipal Airport"^^\string].
+sln[hasElevation -> 1288].
+sln[hasLattitude -> 38.7910003662109].
+sln[hasLongitude -> -97.6521987915039].
+sln[hasRunway(T0) -> 12300].
+sln[hasRunway(T1) -> 11800].
+sln[hasRunway(T2) -> 11300].
+sln[hasRunway(T3) -> 10800].
+oma[hasAirportName -> "Eppley Airfield"^^\string].
+oma[hasElevation -> 984].
+oma[hasLattitude -> 41.3031997680664].
+oma[hasLongitude -> -95.8940963745117].
+oma[hasRunway(T0) -> 9502].
+oma[hasRunway(T1) -> 9002].
+oma[hasRunway(T2) -> 8502].
+tul[hasAirportName -> "Tulsa International Airport"^^\string].
+tul[hasElevation -> 677].
+tul[hasLattitude -> 36.1983985900879].
+tul[hasLongitude -> -95.8880996704102].
+tul[hasRunway(T0) -> 9999].
+tul[hasRunway(T1) -> 9499].
+tul[hasRunway(T2) -> 8999].
+pvr[hasAirportName -> "Puerto Vallarta, Licenciado Gustavo Diaz Ordaz International Airport"^^\string].
+pvr[hasElevation -> 23].
+pvr[hasLattitude -> 20.6800994873047].
+pvr[hasLongitude -> -105.253997802734].
+pvr[hasRunway(T0) -> 10171].
+ogg[hasAirportName -> "Maui, Kahului Airport"^^\string].
+ogg[hasElevation -> 54].
+ogg[hasLattitude -> 20.8985996246338].
+ogg[hasLongitude -> -156.429992675781].
+ogg[hasRunway(T0) -> 6995].
+ogg[hasRunway(T1) -> 6495].
+mcy[hasAirportName -> "Sunshine Coast Airport"^^\string].
+mcy[hasElevation -> 15].
+mcy[hasLattitude -> -26.6033000946].
+mcy[hasLongitude -> 153.091003418].
+mcy[hasRunway(T0) -> 5896].
+mcy[hasRunway(T1) -> 5396].
+dus[hasAirportName -> "Dusseldorf International Airport"^^\string].
+dus[hasElevation -> 147].
+dus[hasLattitude -> 51.2895011901855].
+dus[hasLongitude -> 6.76677989959717].
+dus[hasRunway(T0) -> 9842].
+dus[hasRunway(T1) -> 9342].
+gum[hasAirportName -> "Antonio B. Won Pat International Airport"^^\string].
+gum[hasElevation -> 298].
+gum[hasLattitude -> 13.4834003448].
+gum[hasLongitude -> 144.796005249].
+gum[hasRunway(T0) -> 10015].
+gum[hasRunway(T1) -> 9515].
+txl[hasAirportName -> "Berlin, Tegel International Airport *Closed*"^^\string].
+txl[hasElevation -> 122].
+txl[hasLattitude -> 52.5597000122].
+txl[hasLongitude -> 13.2876996994].
+txl[hasRunway(T0) -> 9918].
+txl[hasRunway(T1) -> 9418].
+cmb[hasAirportName -> "Colombo, Bandaranaike International Airport"^^\string].
+cmb[hasElevation -> 30].
+cmb[hasLattitude -> 7.1807599067688].
+cmb[hasLongitude -> 79.8841018676758].
+cmb[hasRunway(T0) -> 10991].
+lis[hasAirportName -> "Lisbon Portela Airport"^^\string].
+lis[hasElevation -> 374].
+lis[hasLattitude -> 38.7812995911].
+lis[hasLongitude -> -9.13591957092].
+lis[hasRunway(T0) -> 12484].
+gib[hasAirportName -> "Gibraltar Airport"^^\string].
+gib[hasElevation -> 15].
+gib[hasLattitude -> 36.1511993408].
+gib[hasLongitude -> -5.34965991974].
+gib[hasRunway(T0) -> 6000].
+tun[hasAirportName -> "Tunis Carthage International Airport"^^\string].
+tun[hasElevation -> 22].
+tun[hasLattitude -> 36.851001739502].
+tun[hasLongitude -> 10.2271995544434].
+tun[hasRunway(T0) -> 10499].
+tun[hasRunway(T1) -> 9999].
+tpe[hasAirportName -> "Taiwan Taoyuan International Airport"^^\string].
+tpe[hasElevation -> 106].
+tpe[hasLattitude -> 25.0776996612549].
+tpe[hasLongitude -> 121.233001708984].
+tpe[hasRunway(T0) -> 12008].
+tpe[hasRunway(T1) -> 11508].
+ltn[hasAirportName -> "London Luton Airport"^^\string].
+ltn[hasElevation -> 526].
+ltn[hasLattitude -> 51.874698638916].
+ltn[hasLongitude -> -0.368333011865616].
+ltn[hasRunway(T0) -> 7086].
+ktm[hasAirportName -> "Kathmandu, Tribhuvan International Airport"^^\string].
+ktm[hasElevation -> 4390].
+ktm[hasLattitude -> 27.6965999603].
+ktm[hasLongitude -> 85.3591003418].
+ktm[hasRunway(T0) -> 10007].
+nas[hasAirportName -> "Nassau, Lynden Pindling International Airport"^^\string].
+nas[hasElevation -> 16].
+nas[hasLattitude -> 25.0389995575].
+nas[hasLongitude -> -77.4662017822].
+nas[hasRunway(T0) -> 11353].
+nas[hasRunway(T1) -> 10853].
+fpo[hasAirportName -> "Freeport, Grand Bahama International Airport"^^\string].
+fpo[hasElevation -> 7].
+fpo[hasLattitude -> 26.5587005615].
+fpo[hasLongitude -> -78.695602417].
+fpo[hasRunway(T0) -> 11019].
+ggt[hasAirportName -> "George Town, Exuma International Airport"^^\string].
+ggt[hasElevation -> 9].
+ggt[hasLattitude -> 23.5625991821].
+ggt[hasLongitude -> -75.8779983521].
+ggt[hasRunway(T0) -> 7051].
+eyw[hasAirportName -> "Key West International Airport"^^\string].
+eyw[hasElevation -> 3].
+eyw[hasLattitude -> 24.5561008453369].
+eyw[hasLongitude -> -81.7595977783203].
+eyw[hasRunway(T0) -> 4801].
+fuk[hasAirportName -> "Fukuoka Airport"^^\string].
+fuk[hasElevation -> 32].
+fuk[hasLattitude -> 33.5858993530273].
+fuk[hasLongitude -> 130.45100402832].
+fuk[hasRunway(T0) -> 9186].
+kix[hasAirportName -> "Osaka, Kansai International Airport"^^\string].
+kix[hasElevation -> 26].
+kix[hasLattitude -> 34.4272994995117].
+kix[hasLongitude -> 135.244003295898].
+kix[hasRunway(T0) -> 13123].
+kix[hasRunway(T1) -> 12623].
+cts[hasAirportName -> "Sapporo, New Chitose Airport"^^\string].
+cts[hasElevation -> 82].
+cts[hasLattitude -> 42.7751998901367].
+cts[hasLongitude -> 141.692001342773].
+cts[hasRunway(T0) -> 9840].
+cts[hasRunway(T1) -> 9340].
+jed[hasAirportName -> "King Abdulaziz International Airport"^^\string].
+jed[hasElevation -> 48].
+jed[hasLattitude -> 21.679599762].
+jed[hasLongitude -> 39.15650177].
+jed[hasRunway(T0) -> 13123].
+jed[hasRunway(T1) -> 12623].
+jed[hasRunway(T2) -> 12123].
+mct[hasAirportName -> "Muscat International Airport"^^\string].
+mct[hasElevation -> 48].
+mct[hasLattitude -> 23.5932998657227].
+mct[hasLongitude -> 58.2844009399414].
+mct[hasRunway(T0) -> 11775].
+mct[hasRunway(T1) -> 11275].
+kef[hasAirportName -> "Reykjavik, Keflavik International Airport"^^\string].
+kef[hasElevation -> 171].
+kef[hasLattitude -> 63.9850006103516].
+kef[hasLongitude -> -22.6056003570557].
+kef[hasRunway(T0) -> 10056].
+kef[hasRunway(T1) -> 9556].
+bgi[hasAirportName -> "Bridgetown, Sir Grantley Adams International Airport"^^\string].
+bgi[hasElevation -> 169].
+bgi[hasLattitude -> 13.0746002197].
+bgi[hasLongitude -> -59.4925003052].
+bgi[hasRunway(T0) -> 11000].
+anu[hasAirportName -> "V.C. Bird International Airport"^^\string].
+anu[hasElevation -> 62].
+anu[hasLattitude -> 17.1367].
+anu[hasLongitude -> -61.792702].
+anu[hasRunway(T0) -> 9003].
+stt[hasAirportName -> "St. Thomas, Cyril E. King Airport"^^\string].
+stt[hasElevation -> 23].
+stt[hasLattitude -> 18.3372993469238].
+stt[hasLongitude -> -64.9733963012695].
+stt[hasRunway(T0) -> 7000].
+bda[hasAirportName -> "Bermuda, L.F. Wade International International Airport"^^\string].
+bda[hasElevation -> 12].
+bda[hasLattitude -> 32.3639984130859].
+bda[hasLongitude -> -64.6787033081055].
+bda[hasRunway(T0) -> 9713].
+tab[hasAirportName -> "Tobago-Crown Point Airport"^^\string].
+tab[hasElevation -> 38].
+tab[hasLattitude -> 11.1497001647949].
+tab[hasLongitude -> -60.8321990966797].
+tab[hasRunway(T0) -> 9002].
+pos[hasAirportName -> "Port of Spain, Piarco International Airport"^^\string].
+pos[hasElevation -> 58].
+pos[hasLattitude -> 10.5953998565674].
+pos[hasLongitude -> -61.3372001647949].
+pos[hasRunway(T0) -> 10500].
+los[hasAirportName -> "Lagos,Murtala Muhammed International Airport"^^\string].
+los[hasElevation -> 135].
+los[hasLattitude -> 6.57737016677856].
+los[hasLongitude -> 3.32116007804871].
+los[hasRunway(T0) -> 11153].
+mbj[hasAirportName -> "Montego Bay, Sangster International Airport"^^\string].
+mbj[hasElevation -> 4].
+mbj[hasLattitude -> 18.5037002563477].
+mbj[hasLongitude -> -77.9133987426758].
+mbj[hasRunway(T0) -> 8735].
+hre[hasAirportName -> "Harare International Airport"^^\string].
+hre[hasElevation -> 4887].
+hre[hasLattitude -> -17.9318008422852].
+hre[hasLongitude -> 31.0928001403809].
+hre[hasRunway(T0) -> 15502].
+lit[hasAirportName -> "Little Rock, Bill and Hillary Clinton National Airport/Adams Field"^^\string].
+lit[hasElevation -> 262].
+lit[hasLattitude -> 34.7294006348].
+lit[hasLongitude -> -92.2242965698].
+lit[hasRunway(T0) -> 8273].
+lit[hasRunway(T1) -> 7773].
+lit[hasRunway(T2) -> 7273].
+lpa[hasAirportName -> "Gran Canaria Airport"^^\string].
+lpa[hasElevation -> 78].
+lpa[hasLattitude -> 27.9319000244141].
+lpa[hasLongitude -> -15.3865995407104].
+lpa[hasRunway(T0) -> 10171].
+lpa[hasRunway(T1) -> 9671].
+sou[hasAirportName -> "Southampton Airport"^^\string].
+sou[hasElevation -> 44].
+sou[hasLattitude -> 50.9502983093262].
+sou[hasLongitude -> -1.35679996013641].
+sou[hasRunway(T0) -> 5653].
+pmi[hasAirportName -> "Palma De Mallorca Airport"^^\string].
+pmi[hasElevation -> 27].
+pmi[hasLattitude -> 39.551700592].
+pmi[hasLongitude -> 2.73881006241].
+pmi[hasRunway(T0) -> 10728].
+pmi[hasRunway(T1) -> 10228].
+adl[hasAirportName -> "Adelaide International Airport"^^\string].
+adl[hasElevation -> 20].
+adl[hasLattitude -> -34.9449996948242].
+adl[hasLongitude -> 138.531005859375].
+adl[hasRunway(T0) -> 10171].
+adl[hasRunway(T1) -> 9671].
+drw[hasAirportName -> "Darwin International Airport"^^\string].
+drw[hasElevation -> 103].
+drw[hasLattitude -> -12.4146995544434].
+drw[hasLongitude -> 130.876998901367].
+drw[hasRunway(T0) -> 11004].
+drw[hasRunway(T1) -> 10504].
+cur[hasAirportName -> "Curacao, Hato International Airport"^^\string].
+cur[hasElevation -> 29].
+cur[hasLattitude -> 12.1888999939].
+cur[hasLongitude -> -68.9598007202].
+cur[hasRunway(T0) -> 11188].
+dps[hasAirportName -> "Bali - Ngurah Rai International Airport"^^\string].
+dps[hasElevation -> 14].
+dps[hasLattitude -> -8.74816989898682].
+dps[hasLongitude -> 115.166999816895].
+dps[hasRunway(T0) -> 9790].
+dps[hasRunway(T1) -> 9290].
+cgk[hasAirportName -> "Soekarno-Hatta International Airport"^^\string].
+cgk[hasElevation -> 34].
+cgk[hasLattitude -> -6.1255698204].
+cgk[hasLongitude -> 106.65599823].
+cgk[hasRunway(T0) -> 12008].
+cgk[hasRunway(T1) -> 11508].
+bon[hasAirportName -> "Bonaire, Flamingo International Airport"^^\string].
+bon[hasElevation -> 20].
+bon[hasLattitude -> 12.1309995651245].
+bon[hasLongitude -> -68.2685012817383].
+bon[hasRunway(T0) -> 9449].
+aua[hasAirportName -> "Aruba, Queen Beatrix International Airport"^^\string].
+aua[hasElevation -> 60].
+aua[hasLattitude -> 12.5013999938965].
+aua[hasLongitude -> -70.0151977539062].
+aua[hasRunway(T0) -> 9000].
+orf[hasAirportName -> "Norfolk International Airport"^^\string].
+orf[hasElevation -> 26].
+orf[hasLattitude -> 36.8945999145508].
+orf[hasLongitude -> -76.2012023925781].
+orf[hasRunway(T0) -> 9001].
+orf[hasRunway(T1) -> 8501].
+jax[hasAirportName -> "Jacksonville International Airport"^^\string].
+jax[hasElevation -> 30].
+jax[hasLattitude -> 30.4941005706787].
+jax[hasLongitude -> -81.6878967285156].
+jax[hasRunway(T0) -> 10000].
+jax[hasRunway(T1) -> 9500].
+pvd[hasAirportName -> "Providence, Theodore Francis Green State Airport"^^\string].
+pvd[hasElevation -> 55].
+pvd[hasLattitude -> 41.7326011657715].
+pvd[hasLongitude -> -71.4204025268555].
+pvd[hasRunway(T0) -> 7166].
+pvd[hasRunway(T1) -> 6666].
+puj[hasAirportName -> "Punta Cana International Airport"^^\string].
+puj[hasElevation -> 47].
+puj[hasLattitude -> 18.5673999786].
+puj[hasLongitude -> -68.3634033203].
+puj[hasRunway(T0) -> 10171].
+mdt[hasAirportName -> "Harrisburg International Airport"^^\string].
+mdt[hasElevation -> 310].
+mdt[hasLattitude -> 40.1935005188].
+mdt[hasLongitude -> -76.7633972168].
+mdt[hasRunway(T0) -> 10001].
+mdt[hasRunway(T1) -> 9501].
+sjo[hasAirportName -> "San Jose, Juan Santamaria International Airport"^^\string].
+sjo[hasElevation -> 3021].
+sjo[hasLattitude -> 9.99386024475098].
+sjo[hasLongitude -> -84.2088012695312].
+sjo[hasRunway(T0) -> 9882].
+smf[hasAirportName -> "Sacramento International Airport"^^\string].
+smf[hasElevation -> 27].
+smf[hasLattitude -> 38.6954002380371].
+smf[hasLongitude -> -121.591003417969].
+smf[hasRunway(T0) -> 8601].
+smf[hasRunway(T1) -> 8101].
+rtb[hasAirportName -> "Coxen Hole, Juan Manuel Galvez International Airport"^^\string].
+rtb[hasElevation -> 18].
+rtb[hasLattitude -> 16.3167991638184].
+rtb[hasLongitude -> -86.5230026245117].
+rtb[hasRunway(T0) -> 7349].
+tgu[hasAirportName -> "Tegucigalpa, Toncontin International Airport"^^\string].
+tgu[hasElevation -> 3294].
+tgu[hasLattitude -> 14.0608997344971].
+tgu[hasLongitude -> -87.2172012329102].
+tgu[hasRunway(T0) -> 6112].
+lxr[hasAirportName -> "Luxor International Airport"^^\string].
+lxr[hasElevation -> 294].
+lxr[hasLattitude -> 25.670999527].
+lxr[hasLongitude -> 32.7066001892].
+lxr[hasRunway(T0) -> 9843].
+rix[hasAirportName -> "Riga International Airport"^^\string].
+rix[hasElevation -> 36].
+rix[hasLattitude -> 56.9235992431641].
+rix[hasLongitude -> 23.9710998535156].
+rix[hasRunway(T0) -> 10499].
+ruh[hasAirportName -> "Riyadh, King Khaled International Airport"^^\string].
+ruh[hasElevation -> 2049].
+ruh[hasLattitude -> 24.9575996398926].
+ruh[hasLongitude -> 46.6987991333008].
+ruh[hasRunway(T0) -> 13796].
+ruh[hasRunway(T1) -> 13296].
+can[hasAirportName -> "Guangzhou Baiyun International Airport"^^\string].
+can[hasElevation -> 50].
+can[hasLattitude -> 23.3924007415771].
+can[hasLongitude -> 113.299003601074].
+can[hasRunway(T0) -> 12467].
+can[hasRunway(T1) -> 11967].
+agp[hasAirportName -> "Malaga Airport"^^\string].
+agp[hasElevation -> 53].
+agp[hasLattitude -> 36.6749000549316].
+agp[hasLongitude -> -4.49911022186279].
+agp[hasRunway(T0) -> 10500].
+agp[hasRunway(T1) -> 10000].
+fnc[hasAirportName -> "Funchal, Madeira Airport"^^\string].
+fnc[hasElevation -> 192].
+fnc[hasLattitude -> 32.6978988647461].
+fnc[hasLongitude -> -16.7744998931885].
+fnc[hasRunway(T0) -> 9110].
+lba[hasAirportName -> "Leeds Bradford Airport"^^\string].
+lba[hasElevation -> 681].
+lba[hasLattitude -> 53.8658981323242].
+lba[hasLongitude -> -1.66057002544403].
+lba[hasRunway(T0) -> 7382].
+abz[hasAirportName -> "Aberdeen Dyce Airport"^^\string].
+abz[hasElevation -> 215].
+abz[hasLattitude -> 57.2019004821777].
+abz[hasLongitude -> -2.19777989387512].
+abz[hasRunway(T0) -> 6001].
+abz[hasRunway(T1) -> 5501].
+abz[hasRunway(T2) -> 5001].
+abz[hasRunway(T3) -> 4501].
+ayt[hasAirportName -> "Antalya International Airport"^^\string].
+ayt[hasElevation -> 177].
+ayt[hasLattitude -> 36.8987007141113].
+ayt[hasLongitude -> 30.800500869751].
+ayt[hasRunway(T0) -> 11155].
+ayt[hasRunway(T1) -> 10655].
+ayt[hasRunway(T2) -> 10155].
+isb[hasAirportName -> "Islamabad, Benazir Bhutto International Airport"^^\string].
+isb[hasElevation -> 1668].
+isb[hasLattitude -> 33.61669921875].
+isb[hasLongitude -> 73.0991973876953].
+isb[hasRunway(T0) -> 10785].
+jer[hasAirportName -> "Jersey Airport"^^\string].
+jer[hasElevation -> 277].
+jer[hasLattitude -> 49.2079010009766].
+jer[hasLongitude -> -2.1955099105835].
+jer[hasRunway(T0) -> 5597].
+zth[hasAirportName -> "Zakynthos, Dionysios Solomos Airport"^^\string].
+zth[hasElevation -> 15].
+zth[hasLattitude -> 37.7509002685547].
+zth[hasLongitude -> 20.8843002319336].
+zth[hasRunway(T0) -> 7310].
+rho[hasAirportName -> "Rhodes, Diagoras Airport"^^\string].
+rho[hasElevation -> 17].
+rho[hasLattitude -> 36.4053993225098].
+rho[hasLongitude -> 28.0862007141113].
+rho[hasRunway(T0) -> 10846].
+brs[hasAirportName -> "Bristol International Airport"^^\string].
+brs[hasElevation -> 622].
+brs[hasLattitude -> 51.3827018737793].
+brs[hasLongitude -> -2.7190899848938].
+brs[hasRunway(T0) -> 6598].
+ncl[hasAirportName -> "Newcastle Airport"^^\string].
+ncl[hasElevation -> 266].
+ncl[hasLattitude -> 55.0374984741211].
+ncl[hasLongitude -> -1.69166994094849].
+ncl[hasRunway(T0) -> 7642].
+gci[hasAirportName -> "Guernsey Airport"^^\string].
+gci[hasElevation -> 336].
+gci[hasLattitude -> 49.435001373291].
+gci[hasLongitude -> -2.60196995735168].
+gci[hasRunway(T0) -> 4800].
+cos[hasAirportName -> "City of Colorado Springs Municipal Airport"^^\string].
+cos[hasElevation -> 6187].
+cos[hasLattitude -> 38.8058013916016].
+cos[hasLongitude -> -104.700996398926].
+cos[hasRunway(T0) -> 13501].
+cos[hasRunway(T1) -> 13001].
+cos[hasRunway(T2) -> 12501].
+hsv[hasAirportName -> "Huntsville International Carl T Jones Field"^^\string].
+hsv[hasElevation -> 629].
+hsv[hasLattitude -> 34.6371994018555].
+hsv[hasLongitude -> -86.7751007080078].
+hsv[hasRunway(T0) -> 12600].
+hsv[hasRunway(T1) -> 12100].
+bhm[hasAirportName -> "Birmingham-Shuttlesworth International Airport"^^\string].
+bhm[hasElevation -> 650].
+bhm[hasLattitude -> 33.56290054].
+bhm[hasLongitude -> -86.75350189].
+bhm[hasRunway(T0) -> 10000].
+bhm[hasRunway(T1) -> 9500].
+yqb[hasAirportName -> "Quebec Jean Lesage International Airport"^^\string].
+yqb[hasElevation -> 244].
+yqb[hasLattitude -> 46.7910995483].
+yqb[hasLongitude -> -71.3933029175].
+yqb[hasRunway(T0) -> 9000].
+yqb[hasRunway(T1) -> 8500].
+rap[hasAirportName -> "Rapid City Regional Airport"^^\string].
+rap[hasElevation -> 3204].
+rap[hasLattitude -> 44.0452995300293].
+rap[hasLongitude -> -103.056999206543].
+rap[hasRunway(T0) -> 8701].
+rap[hasRunway(T1) -> 8201].
+sdf[hasAirportName -> "Louisville International Standiford Field"^^\string].
+sdf[hasElevation -> 501].
+sdf[hasLattitude -> 38.1744003295898].
+sdf[hasLongitude -> -85.7360000610352].
+sdf[hasRunway(T0) -> 10850].
+sdf[hasRunway(T1) -> 10350].
+sdf[hasRunway(T2) -> 9850].
+buf[hasAirportName -> "Buffalo Niagara International Airport"^^\string].
+buf[hasElevation -> 728].
+buf[hasLattitude -> 42.94049835].
+buf[hasLongitude -> -78.73220062].
+buf[hasRunway(T0) -> 8102].
+buf[hasRunway(T1) -> 7602].
+shv[hasAirportName -> "Shreveport Regional Airport"^^\string].
+shv[hasElevation -> 258].
+shv[hasLattitude -> 32.4466018676758].
+shv[hasLongitude -> -93.8255996704102].
+shv[hasRunway(T0) -> 8351].
+shv[hasRunway(T1) -> 7851].
+boi[hasAirportName -> "Boise Air Terminal/Gowen field"^^\string].
+boi[hasElevation -> 2871].
+boi[hasLattitude -> 43.56439972].
+boi[hasLongitude -> -116.2229996].
+boi[hasRunway(T0) -> 10000].
+boi[hasRunway(T1) -> 9500].
+boi[hasRunway(T2) -> 9000].
+lih[hasAirportName -> "Kuai, Lihue Airport"^^\string].
+lih[hasElevation -> 153].
+lih[hasLattitude -> 21.9759998321533].
+lih[hasLongitude -> -159.339004516602].
+lih[hasRunway(T0) -> 6500].
+lih[hasRunway(T1) -> 6000].
+lbb[hasAirportName -> "Lubbock Preston Smith International Airport"^^\string].
+lbb[hasElevation -> 3282].
+lbb[hasLattitude -> 33.6636009216309].
+lbb[hasLongitude -> -101.822998046875].
+lbb[hasRunway(T0) -> 11500].
+lbb[hasRunway(T1) -> 11000].
+lbb[hasRunway(T2) -> 10500].
+ein[hasAirportName -> "Eindhoven Airport"^^\string].
+ein[hasElevation -> 74].
+ein[hasLattitude -> 51.4500999451].
+ein[hasLongitude -> 5.37452983856].
+ein[hasRunway(T0) -> 9843].
+svq[hasAirportName -> "Sevilla Airport"^^\string].
+svq[hasElevation -> 112].
+svq[hasLattitude -> 37.4179992675781].
+svq[hasLongitude -> -5.8931097984314].
+svq[hasRunway(T0) -> 11024].
+bsl[hasAirportName -> "EuroAirport Basle-Mulhouse-Freiburg Airport (BSL/MLH/EAP)"^^\string].
+bsl[hasElevation -> 885].
+bsl[hasLattitude -> 47.5895996094].
+bsl[hasLongitude -> 7.52991008759].
+bsl[hasRunway(T0) -> 12795].
+bsl[hasRunway(T1) -> 12295].
+ecp[hasAirportName -> "Northwest Florida Beaches International Airport"^^\string].
+ecp[hasElevation -> 69].
+ecp[hasLattitude -> 30.3417].
+ecp[hasLongitude -> -85.7973].
+ecp[hasRunway(T0) -> 10000].
+hrl[hasAirportName -> "Harlingen, Valley International Airport"^^\string].
+hrl[hasElevation -> 36].
+hrl[hasLattitude -> 26.2285003662109].
+hrl[hasLongitude -> -97.6544036865234].
+hrl[hasRunway(T0) -> 8301].
+hrl[hasRunway(T1) -> 7801].
+hrl[hasRunway(T2) -> 7301].
+dbv[hasAirportName -> "Dubrovnik Airport"^^\string].
+dbv[hasElevation -> 527].
+dbv[hasLattitude -> 42.5614013671875].
+dbv[hasLongitude -> 18.2681999206543].
+dbv[hasRunway(T0) -> 10827].
+rno[hasAirportName -> "Reno Taoe International Airport"^^\string].
+rno[hasElevation -> 4415].
+rno[hasLattitude -> 39.4990997314453].
+rno[hasLongitude -> -119.767997741699].
+rno[hasRunway(T0) -> 11002].
+rno[hasRunway(T1) -> 10502].
+rno[hasRunway(T2) -> 10002].
+cmh[hasAirportName -> "Columbus, Port Columbus International Airport"^^\string].
+cmh[hasElevation -> 815].
+cmh[hasLattitude -> 39.9980010986328].
+cmh[hasLongitude -> -82.8918991088867].
+cmh[hasRunway(T0) -> 10125].
+cmh[hasRunway(T1) -> 9625].
+ida[hasAirportName -> "Idaho Falls Regional Airport"^^\string].
+ida[hasElevation -> 4744].
+ida[hasLattitude -> 43.5145988464355].
+ida[hasLongitude -> -112.070999145508].
+ida[hasRunway(T0) -> 9002].
+ida[hasRunway(T1) -> 8502].
+alb[hasAirportName -> "Albany International Airport"^^\string].
+alb[hasElevation -> 285].
+alb[hasLattitude -> 42.7482986450195].
+alb[hasLongitude -> -73.8016967773438].
+alb[hasRunway(T0) -> 7200].
+alb[hasRunway(T1) -> 6700].
+svg[hasAirportName -> "Stavanger Airport"^^\string].
+svg[hasElevation -> 29].
+svg[hasLattitude -> 58.8767013549805].
+svg[hasLongitude -> 5.63778018951416].
+svg[hasRunway(T0) -> 9369].
+svg[hasRunway(T1) -> 8869].
+hkt[hasAirportName -> "Phuket International Airport"^^\string].
+hkt[hasElevation -> 82].
+hkt[hasLattitude -> 8.11320018768].
+hkt[hasLongitude -> 98.3169021606].
+hkt[hasRunway(T0) -> 9843].
+amm[hasAirportName -> "Queen Alia International Airport"^^\string].
+amm[hasElevation -> 2395].
+amm[hasLattitude -> 31.7226009369].
+amm[hasLongitude -> 35.9931983948].
+amm[hasRunway(T0) -> 12008].
+amm[hasRunway(T1) -> 11508].
+bgo[hasAirportName -> "Bergen Airport Flesland"^^\string].
+bgo[hasElevation -> 170].
+bgo[hasLattitude -> 60.293399810791].
+bgo[hasLongitude -> 5.21814012527466].
+bgo[hasRunway(T0) -> 9810].
+ict[hasAirportName -> "Wichita Mid Continent Airport"^^\string].
+ict[hasElevation -> 1333].
+ict[hasLattitude -> 37.6498985290527].
+ict[hasLongitude -> -97.4330978393555].
+ict[hasRunway(T0) -> 10301].
+ict[hasRunway(T1) -> 9801].
+ict[hasRunway(T2) -> 9301].
+maf[hasAirportName -> "Midland International Airport"^^\string].
+maf[hasElevation -> 2871].
+maf[hasLattitude -> 31.9424991607666].
+maf[hasLongitude -> -102.202003479004].
+maf[hasRunway(T0) -> 9501].
+maf[hasRunway(T1) -> 9001].
+maf[hasRunway(T2) -> 8501].
+maf[hasRunway(T3) -> 8001].
+yxe[hasAirportName -> "Saskatoon John G. Diefenbaker International Airport"^^\string].
+yxe[hasElevation -> 1653].
+yxe[hasLattitude -> 52.1707992553711].
+yxe[hasLongitude -> -106.699996948242].
+yxe[hasRunway(T0) -> 8300].
+yxe[hasRunway(T1) -> 7800].
+bdl[hasAirportName -> "Bradley International Airport"^^\string].
+bdl[hasElevation -> 173].
+bdl[hasLattitude -> 41.9388999939].
+bdl[hasLongitude -> -72.6831970215].
+bdl[hasRunway(T0) -> 9510].
+bdl[hasRunway(T1) -> 9010].
+bdl[hasRunway(T2) -> 8510].
+bil[hasAirportName -> "Billings Logan International Airport"^^\string].
+bil[hasElevation -> 3652].
+bil[hasLattitude -> 45.8077011108398].
+bil[hasLongitude -> -108.542999267578].
+bil[hasRunway(T0) -> 10518].
+bil[hasRunway(T1) -> 10018].
+bil[hasRunway(T2) -> 9518].
+sxm[hasAirportName -> "Sint Martin, Princess Juliana International Airport"^^\string].
+sxm[hasElevation -> 13].
+sxm[hasLattitude -> 18.0410003662].
+sxm[hasLongitude -> -63.1088981628].
+sxm[hasRunway(T0) -> 7708].
+sxm[hasRunway(T1) -> 7208].
+nan[hasAirportName -> "Fiji, Nadi International Airport"^^\string].
+nan[hasElevation -> 59].
+nan[hasLattitude -> -17.7553997039795].
+nan[hasLongitude -> 177.442993164062].
+nan[hasRunway(T0) -> 10739].
+nan[hasRunway(T1) -> 10239].
+sgf[hasAirportName -> "Springfield Branson National Airport"^^\string].
+sgf[hasElevation -> 1268].
+sgf[hasLattitude -> 37.24570084].
+sgf[hasLongitude -> -93.38860321].
+sgf[hasRunway(T0) -> 8000].
+sgf[hasRunway(T1) -> 7500].
+ric[hasAirportName -> "Richmond International Airport"^^\string].
+ric[hasElevation -> 167].
+ric[hasLattitude -> 37.505199432373].
+ric[hasLongitude -> -77.3197021484375].
+ric[hasRunway(T0) -> 9003].
+ric[hasRunway(T1) -> 8503].
+ric[hasRunway(T2) -> 8003].
+ccs[hasAirportName -> "Simon Bolivar International Airport"^^\string].
+ccs[hasElevation -> 235].
+ccs[hasLattitude -> 10.6031169891].
+ccs[hasLongitude -> -66.9905853271].
+ccs[hasRunway(T0) -> 11483].
+ccs[hasRunway(T1) -> 10983].
+gye[hasAirportName -> "Jose Joaquin de Olmedo International Airport"^^\string].
+gye[hasElevation -> 19].
+gye[hasLattitude -> -2.15741991997].
+gye[hasLongitude -> -79.8835983276].
+gye[hasRunway(T0) -> 9154].
+nkg[hasAirportName -> "Nanjing Lukou Airport"^^\string].
+nkg[hasElevation -> 49].
+nkg[hasLattitude -> 31.742000579834].
+nkg[hasLongitude -> 118.861999511719].
+nkg[hasRunway(T0) -> 11811].
+txk[hasAirportName -> "Texarkana Regional Webb Field"^^\string].
+txk[hasElevation -> 390].
+txk[hasLattitude -> 33.4537010192871].
+txk[hasLongitude -> -93.9909973144531].
+txk[hasRunway(T0) -> 6601].
+txk[hasRunway(T1) -> 6101].
+pia[hasAirportName -> "General Wayne A. Downing Peoria International Airport"^^\string].
+pia[hasElevation -> 660].
+pia[hasLattitude -> 40.6641998291].
+pia[hasLongitude -> -89.6932983398].
+pia[hasRunway(T0) -> 10104].
+pia[hasRunway(T1) -> 9604].
+tll[hasAirportName -> "Tallinn Airport"^^\string].
+tll[hasElevation -> 131].
+tll[hasLattitude -> 59.4132995605].
+tll[hasLongitude -> 24.8327999115].
+tll[hasRunway(T0) -> 10072].
+alg[hasAirportName -> "Algiers, Houari Boumediene Airport"^^\string].
+alg[hasElevation -> 82].
+alg[hasLattitude -> 36.6910018920898].
+alg[hasLongitude -> 3.21540999412537].
+alg[hasRunway(T0) -> 11483].
+alg[hasRunway(T1) -> 10983].
+ito[hasAirportName -> "Hilo International Airport"^^\string].
+ito[hasElevation -> 38].
+ito[hasLattitude -> 19.721399307251].
+ito[hasLongitude -> -155.048004150391].
+ito[hasRunway(T0) -> 9800].
+ito[hasRunway(T1) -> 9300].
+lex[hasAirportName -> "Blue Grass Airport"^^\string].
+lex[hasElevation -> 979].
+lex[hasLattitude -> 38.0364990234375].
+lex[hasLongitude -> -84.6059036254883].
+lex[hasRunway(T0) -> 7003].
+gua[hasAirportName -> "La Aurora Airport"^^\string].
+gua[hasElevation -> 4952].
+gua[hasLattitude -> 14.5832996368408].
+gua[hasLongitude -> -90.5274963378906].
+gua[hasRunway(T0) -> 9800].
+isp[hasAirportName -> "Long Island Mac Arthur Airport"^^\string].
+isp[hasElevation -> 99].
+isp[hasLattitude -> 40.79520035].
+isp[hasLongitude -> -73.10019684].
+isp[hasRunway(T0) -> 7006].
+isp[hasRunway(T1) -> 6506].
+isp[hasRunway(T2) -> 6006].
+isp[hasRunway(T3) -> 5506].
+iag[hasAirportName -> "Niagara Falls International Airport"^^\string].
+iag[hasElevation -> 589].
+iag[hasLattitude -> 43.1072998046875].
+iag[hasLongitude -> -78.9461975097656].
+iag[hasRunway(T0) -> 9829].
+iag[hasRunway(T1) -> 9329].
+iag[hasRunway(T2) -> 8829].
+swf[hasAirportName -> "Stewart International Airport"^^\string].
+swf[hasElevation -> 491].
+swf[hasLattitude -> 41.5041007995605].
+swf[hasLongitude -> -74.1047973632812].
+swf[hasRunway(T0) -> 11818].
+swf[hasRunway(T1) -> 11318].
+bim[hasAirportName -> "South Bimini Airport"^^\string].
+bim[hasElevation -> 10].
+bim[hasLattitude -> 25.6998996735].
+bim[hasLongitude -> -79.2647018433].
+bim[hasRunway(T0) -> 5430].
+ork[hasAirportName -> "Cork Airport"^^\string].
+ork[hasElevation -> 502].
+ork[hasLattitude -> 51.8413009643555].
+ork[hasLongitude -> -8.49110984802246].
+ork[hasRunway(T0) -> 6998].
+ork[hasRunway(T1) -> 6498].
+hav[hasAirportName -> "Jose Marti International Airport"^^\string].
+hav[hasElevation -> 210].
+hav[hasLattitude -> 22.989200592041].
+hav[hasLongitude -> -82.4091033935547].
+hav[hasRunway(T0) -> 13123].
+wro[hasAirportName -> "Copernicus Wroclaw Airport"^^\string].
+wro[hasElevation -> 404].
+wro[hasLattitude -> 51.1026992798].
+wro[hasLongitude -> 16.885799408].
+wro[hasRunway(T0) -> 8202].
+crp[hasAirportName -> "Corpus Christi International Airport"^^\string].
+crp[hasElevation -> 44].
+crp[hasLattitude -> 27.7703990936279].
+crp[hasLongitude -> -97.5011978149414].
+crp[hasRunway(T0) -> 7508].
+crp[hasRunway(T1) -> 7008].
+khi[hasAirportName -> "Jinnah International Airport"^^\string].
+khi[hasElevation -> 100].
+khi[hasLattitude -> 24.9064998626709].
+khi[hasLongitude -> 67.1607971191406].
+khi[hasRunway(T0) -> 11155].
+khi[hasRunway(T1) -> 10655].
+lhe[hasAirportName -> "Alama Iqbal International Airport"^^\string].
+lhe[hasElevation -> 712].
+lhe[hasLattitude -> 31.5216007232666].
+lhe[hasLongitude -> 74.4036026000977].
+lhe[hasRunway(T0) -> 11024].
+lhe[hasRunway(T1) -> 10524].
+asb[hasAirportName -> "Ashgabat Airport"^^\string].
+asb[hasElevation -> 692].
+asb[hasLattitude -> 37.9868011474609].
+asb[hasLongitude -> 58.3610000610352].
+asb[hasRunway(T0) -> 12467].
+asb[hasRunway(T1) -> 11967].
+asb[hasRunway(T2) -> 11467].
+vko[hasAirportName -> "Vnukovo International Airport"^^\string].
+vko[hasElevation -> 685].
+vko[hasLattitude -> 55.5914993286].
+vko[hasLongitude -> 37.2615013123].
+vko[hasRunway(T0) -> 10039].
+vko[hasRunway(T1) -> 9539].
+spu[hasAirportName -> "Split Airport"^^\string].
+spu[hasElevation -> 79].
+spu[hasLattitude -> 43.5388984680176].
+spu[hasLongitude -> 16.2980003356934].
+spu[hasRunway(T0) -> 8366].
+tse[hasAirportName -> "Astana International Airport"^^\string].
+tse[hasElevation -> 1165].
+tse[hasLattitude -> 51.0222015380859].
+tse[hasLongitude -> 71.4669036865234].
+tse[hasRunway(T0) -> 11484].
+gyd[hasAirportName -> "Heydar Aliyev International Airport"^^\string].
+gyd[hasElevation -> 10].
+gyd[hasLattitude -> 40.4674987792969].
+gyd[hasLongitude -> 50.0466995239258].
+gyd[hasRunway(T0) -> 10499].
+gyd[hasRunway(T1) -> 9999].
+jai[hasAirportName -> "Jaipur International Airport"^^\string].
+jai[hasElevation -> 1263].
+jai[hasLattitude -> 26.8241996765].
+jai[hasLongitude -> 75.8122024536].
+jai[hasRunway(T0) -> 9177].
+jai[hasRunway(T1) -> 8677].
+acc[hasAirportName -> "Kotoka International Airport"^^\string].
+acc[hasElevation -> 205].
+acc[hasLattitude -> 5.60518980026245].
+acc[hasLongitude -> -0.166786000132561].
+acc[hasRunway(T0) -> 11165].
+bhd[hasAirportName -> "George Best Belfast City Airport"^^\string].
+bhd[hasElevation -> 15].
+bhd[hasLattitude -> 54.6180992126465].
+bhd[hasLongitude -> -5.87249994277954].
+bhd[hasRunway(T0) -> 6001].
+ebb[hasAirportName -> "Entebbe International Airport"^^\string].
+ebb[hasElevation -> 3782].
+ebb[hasLattitude -> 0.0423859991133213].
+ebb[hasLongitude -> 32.4435005187988].
+ebb[hasRunway(T0) -> 12000].
+ebb[hasRunway(T1) -> 11500].
+haj[hasAirportName -> "Hannover Airport"^^\string].
+haj[hasElevation -> 183].
+haj[hasLattitude -> 52.461101532].
+haj[hasLongitude -> 9.68507957458].
+haj[hasRunway(T0) -> 12467].
+haj[hasRunway(T1) -> 11967].
+haj[hasRunway(T2) -> 11467].
+lin[hasAirportName -> "Linate Airport"^^\string].
+lin[hasElevation -> 353].
+lin[hasLattitude -> 45.445098877].
+lin[hasLongitude -> 9.27674007416].
+lin[hasRunway(T0) -> 8005].
+lin[hasRunway(T1) -> 7505].
+lys[hasAirportName -> "Lyon Saint-Exupery Airport"^^\string].
+lys[hasElevation -> 821].
+lys[hasLattitude -> 45.726398468].
+lys[hasLongitude -> 5.09082984924].
+lys[hasRunway(T0) -> 11483].
+lys[hasRunway(T1) -> 10983].
+mrs[hasAirportName -> "Marseille Provence Airport"^^\string].
+mrs[hasElevation -> 74].
+mrs[hasLattitude -> 43.439271922].
+mrs[hasLongitude -> 5.22142410278].
+mrs[hasRunway(T0) -> 11483].
+mrs[hasRunway(T1) -> 10983].
+otp[hasAirportName -> "Henri Coanda International Airport"^^\string].
+otp[hasElevation -> 314].
+otp[hasLattitude -> 44.5722007751465].
+otp[hasLongitude -> 26.1021995544434].
+otp[hasRunway(T0) -> 11484].
+otp[hasRunway(T1) -> 10984].
+rtm[hasAirportName -> "Rotterdam Airport"^^\string].
+rtm[hasElevation -> -15].
+rtm[hasLattitude -> 51.9569015503].
+rtm[hasLongitude -> 4.43722009659].
+rtm[hasRunway(T0) -> 7218].
+cmn[hasAirportName -> "Mohammed V International Airport"^^\string].
+cmn[hasElevation -> 656].
+cmn[hasLattitude -> 33.3675003051758].
+cmn[hasLongitude -> -7.58997011184692].
+cmn[hasRunway(T0) -> 12205].
+cmn[hasRunway(T1) -> 11705].
+tng[hasAirportName -> "Ibn Batouta Airport"^^\string].
+tng[hasElevation -> 62].
+tng[hasLattitude -> 35.7268981934].
+tng[hasLongitude -> -5.91689014435].
+tng[hasRunway(T0) -> 11483].
+tng[hasRunway(T1) -> 10983].
+abv[hasAirportName -> "Nnamdi Azikiwe International Airport"^^\string].
+abv[hasElevation -> 1123].
+abv[hasLattitude -> 9.00679016113281].
+abv[hasLongitude -> 7.26316976547241].
+abv[hasRunway(T0) -> 11842].
+ala[hasAirportName -> "Almaty Airport"^^\string].
+ala[hasElevation -> 2234].
+ala[hasLattitude -> 43.3521003723145].
+ala[hasLongitude -> 77.0404968261719].
+ala[hasRunway(T0) -> 14427].
+bey[hasAirportName -> "Beirut Rafic Hariri International Airport"^^\string].
+bey[hasElevation -> 87].
+bey[hasLattitude -> 33.8208999633789].
+bey[hasLongitude -> 35.4883995056152].
+bey[hasRunway(T0) -> 12467].
+bey[hasRunway(T1) -> 11967].
+bey[hasRunway(T2) -> 11467].
+ctu[hasAirportName -> "Chengdu Shuangliu International Airport"^^\string].
+ctu[hasElevation -> 1625].
+ctu[hasLattitude -> 30.5785007476807].
+ctu[hasLongitude -> 103.946998596191].
+ctu[hasRunway(T0) -> 11811].
+fao[hasAirportName -> "Faro Airport"^^\string].
+fao[hasElevation -> 24].
+fao[hasLattitude -> 37.0144004822].
+fao[hasLongitude -> -7.96590995789].
+fao[hasRunway(T0) -> 8169].
+fna[hasAirportName -> "Lungi International Airport"^^\string].
+fna[hasElevation -> 84].
+fna[hasLattitude -> 8.61643981933594].
+fna[hasLongitude -> -13.1955003738403].
+fna[hasRunway(T0) -> 10498].
+jmk[hasAirportName -> "Mikonos Airport"^^\string].
+jmk[hasElevation -> 405].
+jmk[hasLattitude -> 37.4351005554199].
+jmk[hasLongitude -> 25.3481006622314].
+jmk[hasRunway(T0) -> 6244].
+jtr[hasAirportName -> "Santorini Airport"^^\string].
+jtr[hasElevation -> 127].
+jtr[hasLattitude -> 36.3992004394531].
+jtr[hasLongitude -> 25.4792995452881].
+jtr[hasRunway(T0) -> 6972].
+jtr[hasRunway(T1) -> 6472].
+kbp[hasAirportName -> "Boryspil International Airport"^^\string].
+kbp[hasElevation -> 427].
+kbp[hasLattitude -> 50.3450012207031].
+kbp[hasLongitude -> 30.8946990966797].
+kbp[hasRunway(T0) -> 13123].
+kbp[hasRunway(T1) -> 12623].
+rjk[hasAirportName -> "Rijeka Airport"^^\string].
+rjk[hasElevation -> 278].
+rjk[hasLattitude -> 45.2168998718262].
+rjk[hasLongitude -> 14.5703001022339].
+rjk[hasRunway(T0) -> 8164].
+rjk[hasRunway(T1) -> 7664].
+tls[hasAirportName -> "Toulouse-Blagnac Airport"^^\string].
+tls[hasElevation -> 499].
+tls[hasLattitude -> 43.6291007995605].
+tls[hasLongitude -> 1.36381995677948].
+tls[hasRunway(T0) -> 11483].
+tls[hasRunway(T1) -> 10983].
+lad[hasAirportName -> "Quatro de Fevereiro Airport"^^\string].
+lad[hasElevation -> 243].
+lad[hasLattitude -> -8.85836982727].
+lad[hasLongitude -> 13.2312002182].
+lad[hasRunway(T0) -> 12190].
+lad[hasRunway(T1) -> 11690].
+led[hasAirportName -> "Pulkovo Airport"^^\string].
+led[hasElevation -> 78].
+led[hasLattitude -> 59.8003005981445].
+led[hasLongitude -> 30.2625007629395].
+led[hasRunway(T0) -> 12402].
+led[hasRunway(T1) -> 11902].
+opo[hasAirportName -> "Francisco de Sa Carneiro Airport"^^\string].
+opo[hasElevation -> 228].
+opo[hasLattitude -> 41.2481002808].
+opo[hasLongitude -> -8.68138980865].
+opo[hasRunway(T0) -> 11417].
+tip[hasAirportName -> "Tripoli International Airport"^^\string].
+tip[hasElevation -> 263].
+tip[hasLattitude -> 32.6635017395].
+tip[hasLongitude -> 13.1590003967].
+tip[hasRunway(T0) -> 11815].
+tip[hasRunway(T1) -> 11315].
+dac[hasAirportName -> "Dhaka / Hazrat Shahjalal International Airport"^^\string].
+dac[hasElevation -> 30].
+dac[hasLattitude -> 23.843347].
+dac[hasLongitude -> 90.397783].
+dac[hasRunway(T0) -> 10500].
+zyl[hasAirportName -> "Osmany International Airport"^^\string].
+zyl[hasElevation -> 50].
+zyl[hasLattitude -> 24.9631996154785].
+zyl[hasLongitude -> 91.8667984008789].
+zyl[hasRunway(T0) -> 9478].
+lcg[hasAirportName -> "A Coruna Airport"^^\string].
+lcg[hasElevation -> 326].
+lcg[hasLattitude -> 43.3021011352539].
+lcg[hasLongitude -> -8.37726020812988].
+lcg[hasRunway(T0) -> 6365].
+tas[hasAirportName -> "Tashkent International Airport"^^\string].
+tas[hasElevation -> 1417].
+tas[hasLattitude -> 41.257900238].
+tas[hasLongitude -> 69.2811965942].
+tas[hasRunway(T0) -> 13123].
+tas[hasRunway(T1) -> 12623].
+ika[hasAirportName -> "Imam Khomeini International Airport"^^\string].
+ika[hasElevation -> 3305].
+ika[hasLattitude -> 35.4160995483398].
+ika[hasLongitude -> 51.1521987915039].
+ika[hasRunway(T0) -> 13940].
+ika[hasRunway(T1) -> 13440].
+mru[hasAirportName -> "Sir Seewoosagur Ramgoolam International Airport"^^\string].
+mru[hasElevation -> 186].
+mru[hasLattitude -> -20.4302005767822].
+mru[hasLongitude -> 57.6836013793945].
+mru[hasRunway(T0) -> 11056].
+sez[hasAirportName -> "Seychelles International Airport"^^\string].
+sez[hasElevation -> 10].
+sez[hasLattitude -> -4.67433977127075].
+sez[hasLongitude -> 55.521800994873].
+sez[hasRunway(T0) -> 9800].
+abi[hasAirportName -> "Abilene Regional Airport"^^\string].
+abi[hasElevation -> 1791].
+abi[hasLattitude -> 32.4113006592].
+abi[hasLongitude -> -99.6819000244].
+abi[hasRunway(T0) -> 7202].
+abi[hasRunway(T1) -> 6702].
+abi[hasRunway(T2) -> 6202].
+act[hasAirportName -> "Waco Regional Airport"^^\string].
+act[hasElevation -> 516].
+act[hasLattitude -> 31.6112995147705].
+act[hasLongitude -> -97.2304992675781].
+act[hasRunway(T0) -> 6596].
+act[hasRunway(T1) -> 6096].
+cll[hasAirportName -> "Easterwood Field"^^\string].
+cll[hasElevation -> 320].
+cll[hasLattitude -> 30.58860016].
+cll[hasLongitude -> -96.36380005].
+cll[hasRunway(T0) -> 7000].
+cll[hasRunway(T1) -> 6500].
+cll[hasRunway(T2) -> 6000].
+bmi[hasAirportName -> "Central Illinois Regional Airport at Bloomington-Normal"^^\string].
+bmi[hasElevation -> 871].
+bmi[hasLattitude -> 40.47710037].
+bmi[hasLongitude -> -88.91590118].
+bmi[hasRunway(T0) -> 8000].
+bmi[hasRunway(T1) -> 7500].
+bmi[hasRunway(T2) -> 7000].
+bog[hasAirportName -> "El Dorado International Airport"^^\string].
+bog[hasElevation -> 8361].
+bog[hasLattitude -> 4.70159].
+bog[hasLongitude -> -74.1469].
+bog[hasRunway(T0) -> 12467].
+bog[hasRunway(T1) -> 11967].
+bpt[hasAirportName -> "Southeast Texas Regional Airport"^^\string].
+bpt[hasElevation -> 15].
+bpt[hasLattitude -> 29.9507999420166].
+bpt[hasLongitude -> -94.0206985473633].
+bpt[hasRunway(T0) -> 6750].
+bpt[hasRunway(T1) -> 6250].
+dsm[hasAirportName -> "Des Moines International Airport"^^\string].
+dsm[hasElevation -> 958].
+dsm[hasLattitude -> 41.5340003967285].
+dsm[hasLongitude -> -93.6631011962891].
+dsm[hasRunway(T0) -> 9003].
+dsm[hasRunway(T1) -> 8503].
+myr[hasAirportName -> "Myrtle Beach International Airport"^^\string].
+myr[hasElevation -> 25].
+myr[hasLattitude -> 33.6796989441].
+myr[hasLongitude -> -78.9282989502].
+myr[hasRunway(T0) -> 9503].
+aex[hasAirportName -> "Alexandria International Airport"^^\string].
+aex[hasElevation -> 89].
+aex[hasLattitude -> 31.3274002075195].
+aex[hasLongitude -> -92.5497970581055].
+aex[hasRunway(T0) -> 9352].
+aex[hasRunway(T1) -> 8852].
+czm[hasAirportName -> "Cozumel International Airport"^^\string].
+czm[hasElevation -> 15].
+czm[hasLattitude -> 20.5223999023438].
+czm[hasLongitude -> -86.9255981445312].
+czm[hasRunway(T0) -> 10165].
+czm[hasRunway(T1) -> 9665].
+agu[hasAirportName -> "Jesus Teran International Airport"^^\string].
+agu[hasElevation -> 6112].
+agu[hasLattitude -> 21.7056007385].
+agu[hasLongitude -> -102.318000793].
+agu[hasRunway(T0) -> 9843].
+mty[hasAirportName -> "General Mariano Escobedo International Airport"^^\string].
+mty[hasElevation -> 1278].
+mty[hasLattitude -> 25.7784996033].
+mty[hasLongitude -> -100.107002258].
+mty[hasRunway(T0) -> 5909].
+ama[hasAirportName -> "Rick Husband Amarillo International Airport"^^\string].
+ama[hasElevation -> 3607].
+ama[hasLattitude -> 35.2193984985352].
+ama[hasLongitude -> -101.706001281738].
+ama[hasRunway(T0) -> 13502].
+ama[hasRunway(T1) -> 13002].
+bjx[hasAirportName -> "Del Bajio International Airport"^^\string].
+bjx[hasElevation -> 5956].
+bjx[hasLattitude -> 20.9934997559].
+bjx[hasLongitude -> -101.481002808].
+bjx[hasRunway(T0) -> 11480].
+bro[hasAirportName -> "Brownsville South Padre Island International Airport"^^\string].
+bro[hasElevation -> 22].
+bro[hasLattitude -> 25.9067993164062].
+bro[hasLongitude -> -97.4259033203125].
+bro[hasRunway(T0) -> 7400].
+bro[hasRunway(T1) -> 6900].
+bro[hasRunway(T2) -> 6400].
+btr[hasAirportName -> "Baton Rouge Metropolitan, Ryan Field"^^\string].
+btr[hasElevation -> 70].
+btr[hasLattitude -> 30.53319931].
+btr[hasLongitude -> -91.14959717].
+btr[hasRunway(T0) -> 7004].
+btr[hasRunway(T1) -> 6504].
+btr[hasRunway(T2) -> 6004].
+bze[hasAirportName -> "Philip S. W. Goldson International Airport"^^\string].
+bze[hasElevation -> 15].
+bze[hasLattitude -> 17.5391006469727].
+bze[hasLongitude -> -88.3081970214844].
+bze[hasRunway(T0) -> 7100].
+cae[hasAirportName -> "Columbia Metropolitan Airport"^^\string].
+cae[hasElevation -> 236].
+cae[hasLattitude -> 33.9388008117676].
+cae[hasLongitude -> -81.119499206543].
+cae[hasRunway(T0) -> 8601].
+cae[hasRunway(T1) -> 8101].
+cha[hasAirportName -> "Lovell Field"^^\string].
+cha[hasElevation -> 683].
+cha[hasLattitude -> 35.0353012084961].
+cha[hasLongitude -> -85.2037963867188].
+cha[hasRunway(T0) -> 7400].
+cha[hasRunway(T1) -> 6900].
+chs[hasAirportName -> "Charleston Air Force Base-International Airport"^^\string].
+chs[hasElevation -> 46].
+chs[hasLattitude -> 32.89860153].
+chs[hasLongitude -> -80.04049683].
+chs[hasRunway(T0) -> 9001].
+chs[hasRunway(T1) -> 8501].
+cmi[hasAirportName -> "University of Illinois Willard Airport"^^\string].
+cmi[hasElevation -> 755].
+cmi[hasLattitude -> 40.03919983].
+cmi[hasLongitude -> -88.27809906].
+cmi[hasRunway(T0) -> 8100].
+cmi[hasRunway(T1) -> 7600].
+cmi[hasRunway(T2) -> 7100].
+cmi[hasRunway(T3) -> 6600].
+cou[hasAirportName -> "Columbia Regional Airport"^^\string].
+cou[hasElevation -> 889].
+cou[hasLattitude -> 38.8180999755859].
+cou[hasLongitude -> -92.219596862793].
+cou[hasRunway(T0) -> 6501].
+cou[hasRunway(T1) -> 6001].
+crw[hasAirportName -> "Yeager Airport"^^\string].
+crw[hasElevation -> 981].
+crw[hasLattitude -> 38.3731002807617].
+crw[hasLongitude -> -81.5932006835938].
+crw[hasRunway(T0) -> 6302].
+crw[hasRunway(T1) -> 5802].
+day[hasAirportName -> "James M Cox Dayton International Airport"^^\string].
+day[hasElevation -> 1009].
+day[hasLattitude -> 39.902400970459].
+day[hasLongitude -> -84.2193984985352].
+day[hasRunway(T0) -> 10900].
+day[hasRunway(T1) -> 10400].
+day[hasRunway(T2) -> 9900].
+cuu[hasAirportName -> "General Roberto Fierro Villalobos International Airport"^^\string].
+cuu[hasElevation -> 4462].
+cuu[hasLattitude -> 28.7028999329].
+cuu[hasLongitude -> -105.964996338].
+cuu[hasRunway(T0) -> 8530].
+cuu[hasRunway(T1) -> 8030].
+cuu[hasRunway(T2) -> 7530].
+dro[hasAirportName -> "Durango La Plata County Airport"^^\string].
+dro[hasElevation -> 6685].
+dro[hasLattitude -> 37.1515007019].
+dro[hasLongitude -> -107.753997803].
+dro[hasRunway(T0) -> 9201].
+evv[hasAirportName -> "Evansville Regional Airport"^^\string].
+evv[hasElevation -> 418].
+evv[hasLattitude -> 38.0369987488].
+evv[hasLongitude -> -87.5324020386].
+evv[hasRunway(T0) -> 8021].
+evv[hasRunway(T1) -> 7521].
+evv[hasRunway(T2) -> 7021].
+far[hasAirportName -> "Hector International Airport"^^\string].
+far[hasElevation -> 902].
+far[hasLattitude -> 46.9207000732422].
+far[hasLongitude -> -96.815803527832].
+far[hasRunway(T0) -> 9000].
+far[hasRunway(T1) -> 8500].
+far[hasRunway(T2) -> 8000].
+fat[hasAirportName -> "Fresno Yosemite International Airport"^^\string].
+fat[hasElevation -> 336].
+fat[hasLattitude -> 36.7761993408203].
+fat[hasLongitude -> -119.718002319336].
+fat[hasRunway(T0) -> 9217].
+fat[hasRunway(T1) -> 8717].
+fsd[hasAirportName -> "Joe Foss Field Airport"^^\string].
+fsd[hasElevation -> 1429].
+fsd[hasLattitude -> 43.5820007324].
+fsd[hasLongitude -> -96.741897583].
+fsd[hasRunway(T0) -> 8999].
+fsd[hasRunway(T1) -> 8499].
+fsd[hasRunway(T2) -> 7999].
+fsm[hasAirportName -> "Fort Smith Regional Airport"^^\string].
+fsm[hasElevation -> 469].
+fsm[hasLattitude -> 35.3366012573242].
+fsm[hasLongitude -> -94.3674011230469].
+fsm[hasRunway(T0) -> 8000].
+fsm[hasRunway(T1) -> 7500].
+fwa[hasAirportName -> "Fort Wayne International Airport"^^\string].
+fwa[hasElevation -> 814].
+fwa[hasLattitude -> 40.97850037].
+fwa[hasLongitude -> -85.19509888].
+fwa[hasRunway(T0) -> 12000].
+fwa[hasRunway(T1) -> 11500].
+fwa[hasRunway(T2) -> 11000].
+gck[hasAirportName -> "Garden City Regional Airport"^^\string].
+gck[hasElevation -> 2891].
+gck[hasLattitude -> 37.9275016785].
+gck[hasLongitude -> -100.723999023].
+gck[hasRunway(T0) -> 7300].
+gck[hasRunway(T1) -> 6800].
+gdl[hasAirportName -> "Don Miguel Hidalgo Y Costilla International Airport"^^\string].
+gdl[hasElevation -> 5016].
+gdl[hasLattitude -> 20.5217990875244].
+gdl[hasLongitude -> -103.310997009277].
+gdl[hasRunway(T0) -> 13123].
+gdl[hasRunway(T1) -> 12623].
+ggg[hasAirportName -> "East Texas Regional Airport"^^\string].
+ggg[hasElevation -> 365].
+ggg[hasLattitude -> 32.3839988708496].
+ggg[hasLongitude -> -94.7115020751953].
+ggg[hasRunway(T0) -> 10000].
+ggg[hasRunway(T1) -> 9500].
+gjt[hasAirportName -> "Grand Junction Regional Airport"^^\string].
+gjt[hasElevation -> 4858].
+gjt[hasLattitude -> 39.1223983765].
+gjt[hasLongitude -> -108.527000427].
+gjt[hasRunway(T0) -> 10501].
+gjt[hasRunway(T1) -> 10001].
+gpt[hasAirportName -> "Gulfport Biloxi International Airport"^^\string].
+gpt[hasElevation -> 28].
+gpt[hasLattitude -> 30.4073009490967].
+gpt[hasLongitude -> -89.0700988769531].
+gpt[hasRunway(T0) -> 9002].
+gpt[hasRunway(T1) -> 8502].
